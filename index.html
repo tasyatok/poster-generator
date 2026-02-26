@@ -2,26 +2,34 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Poster Generator</title>
   <link rel="stylesheet" href="style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
-  <script defer src="sketch.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.2/lib/p5.min.js"></script>
 </head>
-
 <body>
   <div id="stage"></div>
 
-  <!-- UI -->
+  <!-- LEFT CONTROLS -->
   <div id="ui">
-    <button onclick="colsDown()">− Col</button>
-    <button onclick="colsUp()">+ Col</button>
-    <button onclick="rowsDown()">− Row</button>
-    <button onclick="rowsUp()">+ Row</button>
+    <button class="btn primary" onclick="swapRandomCellImage()">Swap</button>
+    <button class="btn" onclick="savePoster()">Save PNG</button>
 
-    <button onclick="swapRandomCellImage()">Swap 1 Cell</button>
+    <div class="group">
+      <div class="row">
+        <button class="btn small" onclick="colsDown()">–</button>
+        <div class="label">Columns</div>
+        <button class="btn small" onclick="colsUp()">+</button>
+      </div>
 
-    <button onclick="savePoster()">Save PNG</button>
+      <div class="row">
+        <button class="btn small" onclick="rowsDown()">–</button>
+        <div class="label">Rows</div>
+        <button class="btn small" onclick="rowsUp()">+</button>
+      </div>
+    </div>
   </div>
+
+  <script src="sketch.js"></script>
 </body>
 </html>
