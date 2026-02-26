@@ -1,44 +1,27 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Poster Generator</title>
-
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-
-  <link rel="stylesheet" href="style.css">
-
-  <!-- p5 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
-
-  <!-- iOS viewport height fix -->
-  <script>
-    function setVH(){
-      document.documentElement.style.setProperty(
-        '--vh',
-        (window.innerHeight * 0.01) + 'px'
-      );
-    }
-    window.addEventListener('resize', setVH);
-    window.addEventListener('orientationchange', setVH);
-    setVH();
-  </script>
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.0/lib/p5.min.js"></script>
+  <script defer src="sketch.js"></script>
 </head>
 
 <body>
-  <div id="stage">
-    <!-- p5 canvas will be injected here -->
-  </div>
+  <div id="stage"></div>
 
-  <!-- UI buttons -->
+  <!-- UI -->
   <div id="ui">
-    <button onclick="cols = max(2, cols - 1)">– Col</button>
-    <button onclick="cols = cols + 1">+ Col</button>
-    <button onclick="rows = max(2, rows - 1)">– Row</button>
-    <button onclick="rows = rows + 1">+ Row</button>
-    <button onclick="saveFrame('poster_#####.png')">Save PNG</button>
-  </div>
+    <button onclick="colsDown()">− Col</button>
+    <button onclick="colsUp()">+ Col</button>
+    <button onclick="rowsDown()">− Row</button>
+    <button onclick="rowsUp()">+ Row</button>
 
-  <script src="sketch.js"></script>
+    <button onclick="swapRandomCellImage()">Swap 1 Cell</button>
+
+    <button onclick="savePoster()">Save PNG</button>
+  </div>
 </body>
 </html>
