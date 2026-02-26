@@ -156,3 +156,25 @@ function wrap(v, maxv){
 function frac(v){
   return v - Math.floor(v);
 }
+
+// ---------- BUTTON CONTROLS ----------
+
+function colsDown(){
+  cols = max(2, cols - 1);
+}
+
+function colsUp(){
+  cols = min(12, cols + 1);
+}
+
+function rowsDown(){
+  rows = max(2, rows - 1);
+}
+
+function rowsUp(){
+  rows = min(12, rows + 1);
+}
+
+function savePoster(){
+  saveCanvas('poster', 'png');
+}
