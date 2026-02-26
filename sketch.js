@@ -1,8 +1,9 @@
 // Munken-ish accordion grid (image fragments)
-// Fixed: taller poster ratio + black page background
+// Keeps original poster ratio: 650 x 910
+// Images must be in /assets: 05.jpg and 03.jpg
 
 const BASE_W = 650;
-const BASE_H = 1200; // <-- more prolonged poster (taller than 910)
+const BASE_H = 910;
 
 let cols = 3, rows = 5;
 let cell = 130;
@@ -12,8 +13,10 @@ let amp = 0.95;
 
 let imgA, imgB;
 
-let minCell = 6;
-let fadeStart = 22;
+// keep strips visible + always drawn
+let minCell = 2;          // allow thin strips
+let fadeStart = 14;       // start dimming only when extremely small
+let minAlpha = 120;       // NEVER fade to black
 let cropMove = 220;
 
 function preload(){
@@ -24,54 +27,50 @@ function preload(){
 function setup(){
   const c = createCanvas(BASE_W, BASE_H);
   c.parent("frame");
-
   pixelDensity(window.devicePixelRatio || 1);
   noStroke();
 }
 
 function draw(){
-  background(0); // poster background stays black
+  background(0);
   t += speed;
 
   if(!imgA || !imgB){
     fill(255, 0, 0);
     textSize(16);
-    text("Images missing.\nPut 05.jpg and 03.jpg into /assets.", 20, 30);
+    text("Missing images.\nPut 05.jpg and 03.jpg into /assets.", 20, 30);
     return;
   }
 
   // --- row heights ---
-  let rh = [];
+  let rh = new Array(rows);
   let sumH = 0;
   for(let r=0;r<rows;r++){
-    let s = 1 + amp * sin(t + r*0.55);
-    let h = max(minCell, cell * s);
-    rh.push(h);
-    sumH += h;
+    const s = 1 + amp * Math.sin(t + r*0.55);
+    rh[r] = Math.max(minCell, cell * s);
+    sumH += rh[r];
   }
-  let ky = height / sumH;
-  rh = rh.map(v => v * ky);
+  const ky = height / sumH;
+  for(let r=0;r<rows;r++) rh[r] *= ky;
 
-  // --- column widths ---
-  let cw = [];
+  // --- col widths ---
+  let cw = new Array(cols);
   let sumW = 0;
   for(let c=0;c<cols;c++){
-    let s = 1 + amp * sin(t*0.95 + c*0.35);
-    let w = max(minCell, cell * s);
-    cw.push(w);
-    sumW += w;
+    const s = 1 + amp * Math.sin(t*0.95 + c*0.35);
+    cw[c] = Math.max(minCell, cell * s);
+    sumW += cw[c];
   }
-  let kx = width / sumW;
-  cw = cw.map(v => v * kx);
+  const kx = width / sumW;
+  for(let c=0;c<cols;c++) cw[c] *= kx;
 
   // --- draw grid ---
   let y = 0;
   for(let r=0;r<rows;r++){
     let x = 0;
     for(let c=0;c<cols;c++){
-      let w = cw[c];
-      let h = rh[r];
-      let img = ((r+c)%2===0) ? imgA : imgB;
+      const w = cw[c], h = rh[r];
+      const img = ((r+c)%2===0) ? imgA : imgB;
       drawCrop(img, x, y, w, h, r, c);
       x += w;
     }
@@ -80,41 +79,53 @@ function draw(){
 }
 
 function drawCrop(img, x, y, w, h, r, c){
-  let tiny = min(w, h);
-  if(tiny <= minCell + 0.5) return;
+  // Always draw (even if tiny) to avoid black gaps
+  const tiny = Math.min(w, h);
 
-  let alpha = 255;
-  if(tiny < fadeStart) alpha = map(tiny, minCell, fadeStart, 0, 255);
-  tint(255, alpha);
+  let a = 255;
+  if(tiny < fadeStart){
+    a = map(tiny, minCell, fadeStart, minAlpha, 255);
+    a = constrain(a, minAlpha, 255);
+  }
+  tint(255, a);
 
-  // Crop window always valid + always fills the cell
-  let sw = constrain((w / width)  * img.width  * 1.4, 40, img.width);
-  let sh = constrain((h / height) * img.height * 1.4, 40, img.height);
+  // Crop window size linked to cell size.
+  // Ensure sw/sh never collapse and always valid.
+  let sw = (w / width)  * img.width  * 1.6;
+  let sh = (h / height) * img.height * 1.6;
 
-  let ax = frac(sin((c+1)*12.9898 + (r+1)*78.233) * 43758.5453);
-  let ay = frac(sin((c+1)*93.9898 + (r+1)*67.345) * 24634.6345);
+  sw = constrain(sw, 20, img.width);
+  sh = constrain(sh, 20, img.height);
 
-  let phase = t + r*0.55 + c*0.35;
-  let mx = cropMove * sin(phase) * (1.0 - constrain(w/(cell*2), 0, 1));
-  let my = cropMove * cos(phase) * (1.0 - constrain(h/(cell*2), 0, 1));
+  // deterministic anchor per cell
+  const ax = frac(Math.sin((c+1)*12.9898 + (r+1)*78.233) * 43758.5453);
+  const ay = frac(Math.sin((c+1)*93.9898 + (r+1)*67.345) * 24634.6345);
 
-  let bx = ax * (img.width  - sw);
-  let by = ay * (img.height - sh);
+  // motion-linked shift
+  const phase = t + r*0.55 + c*0.35;
+  const mx = cropMove * Math.sin(phase) * (1.0 - constrain(w/(cell*2), 0, 1));
+  const my = cropMove * Math.cos(phase) * (1.0 - constrain(h/(cell*2), 0, 1));
 
-  let sx = wrap(bx + mx, img.width  - sw);
-  let sy = wrap(by + my, img.height - sh);
+  const maxX = Math.max(1, img.width  - sw);
+  const maxY = Math.max(1, img.height - sh);
+
+  const baseX = ax * maxX;
+  const baseY = ay * maxY;
+
+  const sx = wrap(baseX + mx, maxX);
+  const sy = wrap(baseY + my, maxY);
 
   image(img, x, y, w, h, sx, sy, sx+sw, sy+sh);
   noTint();
 }
 
 function wrap(v, maxv){
-  if(maxv <= 0) return 0;
-  v %= maxv;
+  if(maxv <= 1) return 0;
+  v = v % maxv;
   if(v < 0) v += maxv;
   return v;
 }
 
 function frac(v){
-  return v - floor(v);
+  return v - Math.floor(v);
 }
