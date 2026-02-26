@@ -31,16 +31,35 @@ canvas{
   transform-origin:center center;
 }
 
-/* LEFT UI */
-#ui{
+/* BOTTOM UI (split left/right) */
+#uiBottom{
   position:fixed;
-  left:24px;
-  top:50%;
-  transform:translateY(-50%);
+  left:0;
+  right:0;
+  bottom:0;
+  padding:16px 18px;
   display:flex;
-  flex-direction:column;
-  gap:10px;
+  justify-content:space-between;
+  gap:16px;
   z-index:10;
+  pointer-events:none; /* so canvas still gets touch unless on controls */
+}
+
+.uiSide{
+  display:flex;
+  gap:10px;
+  align-items:flex-end;
+  pointer-events:auto;
+}
+
+.uiLeft{
+  display:flex;
+  gap:10px;
+}
+
+.uiRight{
+  display:flex;
+  gap:10px;
 }
 
 .btn{
@@ -54,15 +73,11 @@ canvas{
   font-size:13px;
   line-height:1;
   user-select:none;
+  white-space:nowrap;
 }
 
-.btn:hover{
-  background:var(--ui2);
-}
-
-.btn.primary{
-  background:rgba(255,255,255,0.14);
-}
+.btn:hover{ background:var(--ui2); }
+.btn.primary{ background:rgba(255,255,255,0.14); }
 
 .btn.small{
   width:38px;
@@ -70,13 +85,7 @@ canvas{
   font-size:16px;
 }
 
-.group{
-  margin-top:6px;
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
-
+/* Compact Swiss-ish control rows */
 .row{
   display:grid;
   grid-template-columns:38px 1fr 38px;
@@ -85,6 +94,7 @@ canvas{
   padding:10px 12px;
   background:rgba(255,255,255,0.06);
   border:1px solid rgba(255,255,255,0.14);
+  min-width:210px;
 }
 
 .label{
@@ -94,13 +104,18 @@ canvas{
   text-align:center;
 }
 
-/* Mobile: keep UI reachable */
+/* Mobile tweaks */
 @media (max-width: 700px){
-  #ui{
-    left:14px;
-    gap:8px;
+  #uiBottom{
+    padding:12px 12px;
+    gap:12px;
   }
   .row{
+    min-width:180px;
     padding:8px 10px;
+    gap:8px;
+  }
+  .btn{
+    padding:10px 10px;
   }
 }
