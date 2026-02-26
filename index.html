@@ -1,18 +1,36 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Poster Generator</title>
-    <style>
-      body {
-        margin: 0;
-        background: black;
-        overflow: hidden;
-      }
-    </style>
-  </head>
-  <body>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
-    <script src="sketch.js"></script>
-  </body>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Poster Generator</title>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #ffffff; /* white page background */
+    }
+
+    /* 20px margin top/left/bottom (right untouched) */
+    #page {
+      padding: 20px 0 20px 20px; /* top right bottom left */
+      box-sizing: border-box;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="page">
+    <div id="sketch-holder"></div>
+  </div>
+
+  <!-- p5.js from CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
+  <script src="./sketch.js"></script>
+</body>
 </html>
