@@ -1,28 +1,44 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <title>Poster Generator</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<head>
+  <meta charset="utf-8" />
+  <title>Poster Generator</title>
 
-    <!-- p5 -->
-    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.3/lib/p5.min.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
-    <!-- your files -->
-    <link rel="stylesheet" href="style.css" />
-    <script defer src="sketch.js"></script>
-  </head>
+  <link rel="stylesheet" href="style.css">
 
-  <body>
-    <div id="stage"></div>
+  <!-- p5 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
 
-    <!-- Controls -->
-    <div id="ui">
-      <button onclick="colsDown()">− Col</button>
-      <button onclick="colsUp()">+ Col</button>
-      <button onclick="rowsDown()">− Row</button>
-      <button onclick="rowsUp()">+ Row</button>
-      <button onclick="savePoster()">Save PNG</button>
-    </div>
-  </body>
+  <!-- iOS viewport height fix -->
+  <script>
+    function setVH(){
+      document.documentElement.style.setProperty(
+        '--vh',
+        (window.innerHeight * 0.01) + 'px'
+      );
+    }
+    window.addEventListener('resize', setVH);
+    window.addEventListener('orientationchange', setVH);
+    setVH();
+  </script>
+</head>
+
+<body>
+  <div id="stage">
+    <!-- p5 canvas will be injected here -->
+  </div>
+
+  <!-- UI buttons -->
+  <div id="ui">
+    <button onclick="cols = max(2, cols - 1)">– Col</button>
+    <button onclick="cols = cols + 1">+ Col</button>
+    <button onclick="rows = max(2, rows - 1)">– Row</button>
+    <button onclick="rows = rows + 1">+ Row</button>
+    <button onclick="saveFrame('poster_#####.png')">Save PNG</button>
+  </div>
+
+  <script src="sketch.js"></script>
+</body>
 </html>
