@@ -14,8 +14,7 @@ let tt = 0;
 let speed = 0.01;
 let amp = 0.95;
 
-// ---- NEW: image pool ----
-let imgs = [];           // array of p5.Image
+let imgs = [];
 let imgFiles = [
   "01.jpg",
   "02.jpg",
@@ -29,8 +28,9 @@ let imgFiles = [
   "10.jpg"
 ];
 
-// ---- NEW: per-cell image assignment ----
-let cellImg = [];        // stores an image index for each cell (r*cols+c)
+// --- TWO-IMAGE MODE (dominant pair) ---
+let activeA = 0; // index in imgs
+let activeB = 0; // index in imgs
 
 const minCell = 6;
 const fadeStart = 22;
@@ -39,7 +39,6 @@ const cropMove = 220;
 let saveIndex = 0;
 
 function preload() {
-  // Load all images into a pool
   for (let i = 0; i < imgFiles.length; i++) {
     imgs[i] = loadImage(imgFiles[i]);
   }
@@ -49,19 +48,21 @@ function setup() {
   cnv = createCanvas(POSTER_W, POSTER_H);
   cnv.parent("stage");
 
-  // Keeps performance/pixels more consistent across browsers
+  // Helps consistency + performance across browsers
   pixelDensity(1);
-
   noStroke();
-  fitToScreen();
 
-  rebuildCellAssignments(); // NEW
+  // Start pair: 03 + 05 (as requested)
+  activeA = indexOfFile("03.jpg");
+  activeB = indexOfFile("05.jpg");
+
+  fitToScreen();
 }
 
 function draw() {
   background(0);
 
-  // If images still loading
+  // Wait until all images have real dimensions
   if (!imgs.length || imgs.some(im => !im || im.width === 0)) {
     fill(255);
     textSize(16);
@@ -96,7 +97,7 @@ function draw() {
   const kx = width / sumW;
   for (let c = 0; c < cols; c++) cw[c] *= kx;
 
-  // --- draw grid ---
+  // --- draw grid (ONLY 2 images total) ---
   let y = 0;
   for (let r = 0; r < rows; r++) {
     let x = 0;
@@ -104,10 +105,7 @@ function draw() {
       const w = cw[c];
       const h = rh[r];
 
-      const idx = r * cols + c;
-      const imgIndex = cellImg[idx] ?? ((r + c) % imgs.length); // fallback
-      const img = imgs[imgIndex];
-
+      const img = ((r + c) % 2 === 0) ? imgs[activeA] : imgs[activeB];
       drawCropLinked(img, x, y, w, h, r, c);
 
       x += w;
@@ -139,20 +137,16 @@ function drawCropLinked(img, x, y, w, h, r, c) {
   const tiny = min(w, h);
   if (tiny <= minCell + 0.5) return;
 
-  // Fade out image when the cell gets very small (Munken-ish)
   let a = 255;
   if (tiny < fadeStart) a = map(tiny, minCell, fadeStart, 0, 255);
   tint(255, a);
 
-  // Crop window size depends on cell size
   const swf = constrain(map(w, 0, width, 40, img.width * 0.55), 20, img.width);
   const shf = constrain(map(h, 0, height, 40, img.height * 0.55), 20, img.height);
 
-  // Deterministic anchors per cell (no random jumping)
   const ax = frac(sin((c + 1) * 12.9898 + (r + 1) * 78.233) * 43758.5453);
   const ay = frac(sin((c + 1) * 93.9898 + (r + 1) * 67.345) * 24634.6345);
 
-  // Motion-linked shift (same sine phases as grid)
   const phase = tt + r * 0.55 + c * 0.35;
   const mx = cropMove * sin(phase) * (1.0 - constrain(w / (cell * 2.0), 0, 1));
   const my = cropMove * cos(phase) * (1.0 - constrain(h / (cell * 2.0), 0, 1));
@@ -182,55 +176,45 @@ function frac(v) {
   return v - floor(v);
 }
 
-// ---------- NEW: build/maintain per-cell assignments ----------
-function rebuildCellAssignments() {
-  // Create a stable mapping so cells don't all change when you click swap
-  const total = cols * rows;
-  cellImg = new Array(total);
-
-  for (let i = 0; i < total; i++) {
-    cellImg[i] = i % imgs.length;
-  }
-}
-
-// ---------- NEW: button feature ----------
-function swapRandomCellImage() {
-  if (!cellImg.length || imgs.length < 2) return;
-
-  const total = cols * rows;
-  const cellIndex = floor(random(total));
-
-  const current = cellImg[cellIndex];
-  let next = floor(random(imgs.length));
-
-  // avoid picking the same image again (unless pool size is 1)
-  if (imgs.length > 1) {
-    while (next === current) next = floor(random(imgs.length));
-  }
-
-  cellImg[cellIndex] = next;
+// --- helper: find file index safely ---
+function indexOfFile(name) {
+  const i = imgFiles.indexOf(name);
+  return (i >= 0) ? i : 0;
 }
 
 // -------- UI functions for your HTML buttons --------
-function colsDown() {
-  cols = max(2, cols - 1);
-  rebuildCellAssignments();
-}
-function colsUp() {
-  cols = min(12, cols + 1);
-  rebuildCellAssignments();
-}
-function rowsDown() {
-  rows = max(2, rows - 1);
-  rebuildCellAssignments();
-}
-function rowsUp() {
-  rows = min(12, rows + 1);
-  rebuildCellAssignments();
-}
+function colsDown() { cols = max(2, cols - 1); }
+function colsUp()   { cols = min(12, cols + 1); }
+function rowsDown() { rows = max(2, rows - 1); }
+function rowsUp()   { rows = min(12, rows + 1); }
+
 function savePoster() {
   saveIndex++;
   saveCanvas(`poster_${nf(saveIndex, 5)}`, "png");
+}
+
+// -------- THE BUTTON FEATURE (two-image swap chain) --------
+// Keeps exactly 2 images on canvas.
+// (A, B) -> (B, randomNewNotEqualToB)
+function swapRandomCellImage() {
+  if (!imgs.length) return;
+
+  const oldA = activeA;
+  const oldB = activeB;
+
+  activeA = oldB;
+
+  let next = floor(random(imgs.length));
+  if (imgs.length > 1) {
+    while (next === activeA) next = floor(random(imgs.length));
+  }
+  activeB = next;
+
+  // optional: if you *never* want the same image to appear again immediately
+  // (prevents A->B->A bounce), uncomment:
+  // if (imgs.length > 2) {
+  //   while (activeB === activeA || activeB === oldA) activeB = floor(random(imgs.length));
+  // }
 }
 
 // -------- keyboard shortcuts --------
@@ -243,6 +227,6 @@ function keyPressed() {
 
   if (key === "s" || key === "S") savePoster();
 
-  // optional: space swaps one cell too
+  // nice shortcut: space swaps the pair too
   if (key === " ") swapRandomCellImage();
 }
