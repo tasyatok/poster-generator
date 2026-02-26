@@ -1,5 +1,5 @@
-// sketch.js — Munken-ish accordion grid (2-image chain) + HQ save + mobile fixes
-// Desktop look/behavior stays the same. Mobile gets smoother timing + better centering.
+// sketch.js — Munken-ish accordion grid (2-image chain) + HQ save + mobile centering fix
+// Desktop/web behavior stays the same. iPhone Safari gets a centering fix only.
 
 const POSTER_W = 650;
 const POSTER_H = 910;
@@ -37,8 +37,8 @@ const swapChain = [
 ];
 let chainIdx = 0;
 
-let activeA = 0; // index in imgs
-let activeB = 0; // index in imgs
+let activeA = 0;
+let activeB = 0;
 
 const minCell = 6;
 const fadeStart = 22;
@@ -46,7 +46,7 @@ const cropMove = 220;
 
 let saveIndex = 0;
 
-// --- MOBILE ONLY smoothing (does not affect desktop) ---
+// MOBILE ONLY smoothing (desktop untouched)
 const MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 let dtSmooth = 1;
 
@@ -60,19 +60,14 @@ function setup() {
   cnv = createCanvas(POSTER_W, POSTER_H);
   cnv.parent("stage");
 
-  // Keep desktop untouched (you already liked pixelDensity(1) performance + look)
   pixelDensity(1);
   noStroke();
   imageMode(CORNER);
 
-  // Mobile: lower FPS target helps “smoothness” (less stutter)
-  // Desktop unchanged.
   if (MOBILE) frameRate(24);
 
-  // Start exactly: 05–03
   applyChainPair(0);
 
-  // Better mobile centering: call fit after layout settles + on viewport changes
   fitToScreen();
   setTimeout(fitToScreen, 80);
 
@@ -85,7 +80,6 @@ function setup() {
 function draw() {
   background(0);
 
-  // Wait for real image dimensions
   if (!imgs.length || imgs.some(im => !im || im.width === 0)) {
     fill(255);
     textSize(16);
@@ -96,13 +90,11 @@ function draw() {
   cols = max(2, cols);
   rows = max(2, rows);
 
-  // Desktop stays simple & identical.
-  // Mobile gets deltaTime smoothing to prevent “jumping frames”.
   if (!MOBILE) {
-    tt += speed;
+    tt += speed; // desktop unchanged
   } else {
-    let dt = deltaTime / 16.666;      // 1.0 ~ 60fps baseline
-    dt = constrain(dt, 0.75, 1.35);   // clamp spikes
+    let dt = deltaTime / 16.666;
+    dt = constrain(dt, 0.75, 1.35);
     dtSmooth = lerp(dtSmooth, dt, 0.10);
     tt += speed * dtSmooth;
   }
@@ -114,8 +106,8 @@ function windowResized() {
   fitToScreen();
 }
 
-// Center/scale the fixed 650×910 poster to the available viewport.
-// Uses visualViewport on mobile when available (Safari address bar etc).
+// Scale & center the 650×910 canvas to viewport without changing ratio.
+// iPhone Safari fix: force absolute centering with translate(-50%, -50%).
 function fitToScreen() {
   const m = windowWidth <= 700 ? 16 : 50;
 
@@ -130,15 +122,31 @@ function fitToScreen() {
     (vw - m * 2) / POSTER_W,
     (vh - m * 2) / POSTER_H
   );
-
   const scale = Math.min(1, Math.max(0.05, s));
-  cnv.elt.style.transformOrigin = "center center";
-  cnv.elt.style.transform = `scale(${scale})`;
+
+  const el = cnv.elt;
+  el.style.transformOrigin = "center center";
+
+  const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (isiOS) {
+    // iOS Safari transform centering bug workaround
+    el.style.position = "absolute";
+    el.style.left = "50%";
+    el.style.top = "50%";
+    el.style.transform = `translate(-50%, -50%) scale(${scale})`;
+  } else {
+    // Desktop stays as before (centered by CSS stage container)
+    el.style.position = "relative";
+    el.style.left = "auto";
+    el.style.top = "auto";
+    el.style.transform = `scale(${scale})`;
+  }
 }
 
 // ---------- Core render (used for live draw AND HQ save) ----------
 function renderTo(g, W, H, tVal) {
-  // --- row heights (accordion) ---
+  // row heights
   const rh = new Array(rows);
   let sumH = 0;
   for (let r = 0; r < rows; r++) {
@@ -149,7 +157,7 @@ function renderTo(g, W, H, tVal) {
   const ky = H / sumH;
   for (let r = 0; r < rows; r++) rh[r] *= ky;
 
-  // --- col widths (accordion) ---
+  // col widths
   const cw = new Array(cols);
   let sumW = 0;
   for (let c = 0; c < cols; c++) {
@@ -160,7 +168,7 @@ function renderTo(g, W, H, tVal) {
   const kx = W / sumW;
   for (let c = 0; c < cols; c++) cw[c] *= kx;
 
-  // Draw grid (ONLY 2 images total)
+  // draw grid (2 images only)
   let y = 0;
   for (let r = 0; r < rows; r++) {
     let x = 0;
@@ -219,7 +227,6 @@ function drawCropLinkedTo(g, img, x, y, w, h, r, c, W, H, tVal) {
 
 function frac(v) { return v - floor(v); }
 
-// --- helper: find file index safely ---
 function indexOfFile(name) {
   const i = imgFiles.indexOf(name);
   return (i >= 0) ? i : 0;
@@ -232,19 +239,17 @@ function applyChainPair(idx) {
   activeB = indexOfFile(bName);
 }
 
-// -------- UI functions (called by HTML buttons) --------
+// --- UI hooks (HTML buttons) ---
 function colsDown() { cols = max(2, cols - 1); }
 function colsUp()   { cols = min(12, cols + 1); }
 function rowsDown() { rows = max(2, rows - 1); }
 function rowsUp()   { rows = min(12, rows + 1); }
 
-// Swap steps through chain
 function swapNextPair() {
   applyChainPair(chainIdx + 1);
 }
 
-// ✅ Higher-quality PNG export (without touching live performance)
-// Desktop: 2× export; Mobile: 1.5× to avoid memory issues
+// HQ PNG export (desktop 2×, mobile 1.5× to avoid memory issues)
 function savePoster() {
   saveIndex++;
 
@@ -257,14 +262,11 @@ function savePoster() {
   g.noStroke();
   g.background(0);
 
-  // Render the same frame, but at higher resolution
   renderTo(g, W, H, tt);
 
-  // Save the offscreen canvas
   saveCanvas(g, `poster_${nf(saveIndex, 5)}`, "png");
 }
 
-// -------- keyboard shortcuts --------
 function keyPressed() {
   if (key === "c") colsDown();
   if (key === "C") colsUp();
