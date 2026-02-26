@@ -14,7 +14,23 @@ let tt = 0;
 let speed = 0.01;
 let amp = 0.95;
 
-let imgA, imgB;
+// ---- NEW: image pool ----
+let imgs = [];           // array of p5.Image
+let imgFiles = [
+  "01.jpg",
+  "02.jpg",
+  "03.jpg",
+  "04.jpg",
+  "05.jpg",
+  "06.jpg",
+  "07.jpg",
+  "08.jpg",
+  "09.jpg",
+  "10.jpg"
+];
+
+// ---- NEW: per-cell image assignment ----
+let cellImg = [];        // stores an image index for each cell (r*cols+c)
 
 const minCell = 6;
 const fadeStart = 22;
@@ -22,69 +38,44 @@ const cropMove = 220;
 
 let saveIndex = 0;
 
-// small perf: allocate once, resize on demand
-let cw = [];
-let rh = [];
-let gridDirty = true;
-
-function isMobile() {
-  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-}
-
-// NEW: mobile Safari timestep smoothing (prevents jumpy “teleports”)
-const MOBILE = isMobile();
-let dtSmooth = 1;
-
 function preload() {
-  // If your images are inside /assets, change to "assets/05.jpg" etc.
-  imgA = loadImage("05.jpg");
-  imgB = loadImage("03.jpg");
+  // Load all images into a pool
+  for (let i = 0; i < imgFiles.length; i++) {
+    imgs[i] = loadImage(imgFiles[i]);
+  }
 }
 
 function setup() {
   cnv = createCanvas(POSTER_W, POSTER_H);
   cnv.parent("stage");
 
-  // Keep things consistent & lighter
+  // Keeps performance/pixels more consistent across browsers
   pixelDensity(1);
 
-  // NEW: mobile prefers stable 24fps over stuttery 30+
-  frameRate(MOBILE ? 24 : 45);
-
   noStroke();
-  imageMode(CORNER);
-
   fitToScreen();
+
+  rebuildCellAssignments(); // NEW
 }
 
 function draw() {
   background(0);
 
-  if (!imgA || !imgB || imgA.width === 0 || imgB.width === 0) {
+  // If images still loading
+  if (!imgs.length || imgs.some(im => !im || im.width === 0)) {
     fill(255);
     textSize(16);
     text("Loading images…", 20, 30);
     return;
   }
 
-  // keep at least 2x2
   cols = max(2, cols);
   rows = max(2, rows);
 
-  // NEW: clamp + smooth deltaTime so mobile Safari can’t jump frames
-  let dt = deltaTime / 16.666;          // 1.0 at ~60fps
-  dt = constrain(dt, 0.75, 1.35);       // clamp spikes (prevents teleport)
-  dtSmooth = lerp(dtSmooth, dt, 0.10);  // smooth jitter
-  tt += speed * dtSmooth;               // stable motion
-
-  // Ensure arrays match cols/rows only when needed
-  if (gridDirty || cw.length !== cols || rh.length !== rows) {
-    cw = new Array(cols);
-    rh = new Array(rows);
-    gridDirty = false;
-  }
+  tt += speed;
 
   // --- row heights (accordion) ---
+  const rh = new Array(rows);
   let sumH = 0;
   for (let r = 0; r < rows; r++) {
     const s = 1 + amp * sin(tt + r * 0.55);
@@ -95,6 +86,7 @@ function draw() {
   for (let r = 0; r < rows; r++) rh[r] *= ky;
 
   // --- col widths (accordion) ---
+  const cw = new Array(cols);
   let sumW = 0;
   for (let c = 0; c < cols; c++) {
     const s = 1 + amp * sin(tt * 0.95 + c * 0.35);
@@ -104,45 +96,23 @@ function draw() {
   const kx = width / sumW;
   for (let c = 0; c < cols; c++) cw[c] *= kx;
 
-  // --- draw grid with Chrome seam fix ---
-  // We snap cell boundaries to integers and force last col/row to hit the canvas edge.
-  let y0f = 0, y0i = 0;
-
+  // --- draw grid ---
+  let y = 0;
   for (let r = 0; r < rows; r++) {
-    const hFloat = rh[r];
-    let hInt;
-
-    if (r === rows - 1) {
-      hInt = height - y0i; // force edge
-    } else {
-      const y1f = y0f + hFloat;
-      const y1i = Math.round(y1f);
-      hInt = max(1, y1i - y0i);
-      y0f = y1f;
-    }
-
-    let x0f = 0, x0i = 0;
-
+    let x = 0;
     for (let c = 0; c < cols; c++) {
-      const wFloat = cw[c];
-      let wInt;
+      const w = cw[c];
+      const h = rh[r];
 
-      if (c === cols - 1) {
-        wInt = width - x0i; // force edge
-      } else {
-        const x1f = x0f + wFloat;
-        const x1i = Math.round(x1f);
-        wInt = max(1, x1i - x0i);
-        x0f = x1f;
-      }
+      const idx = r * cols + c;
+      const imgIndex = cellImg[idx] ?? ((r + c) % imgs.length); // fallback
+      const img = imgs[imgIndex];
 
-      const img = (r + c) % 2 === 0 ? imgA : imgB;
-      drawCropLinked(img, x0i, y0i, wInt, hInt, r, c);
+      drawCropLinked(img, x, y, w, h, r, c);
 
-      x0i += wInt;
+      x += w;
     }
-
-    y0i += hInt;
+    y += rh[r];
   }
 }
 
@@ -195,11 +165,10 @@ function drawCropLinked(img, x, y, w, h, r, c) {
 
   const sx = int(sxf);
   const sy = int(syf);
-  const sw = max(2, int(swf));
-  const sh = max(2, int(shf));
+  const sw = max(1, int(swf));
+  const sh = max(1, int(shf));
 
-  // Seam killer: draw 1px bigger on destination
-  image(img, x, y, w + 1, h + 1, sx, sy, sx + sw, sy + sh);
+  image(img, x, y, w, h, sx, sy, sx + sw, sy + sh);
   noTint();
 }
 
@@ -213,22 +182,51 @@ function frac(v) {
   return v - floor(v);
 }
 
+// ---------- NEW: build/maintain per-cell assignments ----------
+function rebuildCellAssignments() {
+  // Create a stable mapping so cells don't all change when you click swap
+  const total = cols * rows;
+  cellImg = new Array(total);
+
+  for (let i = 0; i < total; i++) {
+    cellImg[i] = i % imgs.length;
+  }
+}
+
+// ---------- NEW: button feature ----------
+function swapRandomCellImage() {
+  if (!cellImg.length || imgs.length < 2) return;
+
+  const total = cols * rows;
+  const cellIndex = floor(random(total));
+
+  const current = cellImg[cellIndex];
+  let next = floor(random(imgs.length));
+
+  // avoid picking the same image again (unless pool size is 1)
+  if (imgs.length > 1) {
+    while (next === current) next = floor(random(imgs.length));
+  }
+
+  cellImg[cellIndex] = next;
+}
+
 // -------- UI functions for your HTML buttons --------
 function colsDown() {
   cols = max(2, cols - 1);
-  gridDirty = true;
+  rebuildCellAssignments();
 }
 function colsUp() {
   cols = min(12, cols + 1);
-  gridDirty = true;
+  rebuildCellAssignments();
 }
 function rowsDown() {
   rows = max(2, rows - 1);
-  gridDirty = true;
+  rebuildCellAssignments();
 }
 function rowsUp() {
   rows = min(12, rows + 1);
-  gridDirty = true;
+  rebuildCellAssignments();
 }
 function savePoster() {
   saveIndex++;
@@ -244,4 +242,7 @@ function keyPressed() {
   if (key === "R") rowsUp();
 
   if (key === "s" || key === "S") savePoster();
+
+  // optional: space swaps one cell too
+  if (key === " ") swapRandomCellImage();
 }
