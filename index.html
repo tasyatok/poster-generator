@@ -2,24 +2,67 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Poster Generator</title>
 
   <style>
-    html, body {
+    :root{
+      --mTop: 100px;
+      --mLeft: 100px;
+      --mBottom: 100px;
+      --mRight: 0px;
+    }
+
+    html, body{
+      height: 100%;
       margin: 0;
       padding: 0;
-      background: #ffffff; /* white page background */
+      background: #fff;
+      overflow: hidden; /* no scroll, ever */
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
     }
 
-    /* 20px margin top/left/bottom (right untouched) */
-    #page {
-      padding: 20px 0 20px 20px; /* top right bottom left */
+    /* Desktop layout: 100px margins top/left/bottom */
+    #page{
+      position: fixed;
+      inset: 0;
+      padding: var(--mTop) var(--mRight) var(--mBottom) var(--mLeft);
       box-sizing: border-box;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
     }
 
-    canvas {
+    /* Holder will be sized by JS so it always fits viewport */
+    #sketch-holder{
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: flex-start;
+      justify-content: flex-start;
+    }
+
+    /* Mobile: center and fit nicely */
+    @media (max-width: 768px){
+      :root{
+        --mTop: 16px;
+        --mLeft: 16px;
+        --mBottom: 16px;
+        --mRight: 16px;
+      }
+      #page{
+        padding: var(--mTop) var(--mRight) var(--mBottom) var(--mLeft);
+      }
+      #sketch-holder{
+        align-items: center;
+        justify-content: center;
+      }
+    }
+
+    canvas{
       display: block;
+      image-rendering: auto;
+      touch-action: none;
     }
   </style>
 </head>
@@ -29,7 +72,6 @@
     <div id="sketch-holder"></div>
   </div>
 
-  <!-- p5.js from CDN -->
   <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
   <script src="./sketch.js"></script>
 </body>
