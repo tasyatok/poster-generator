@@ -1,42 +1,43 @@
-:root {
+:root{
   --bg: #000;
-  --margin: 50px;
+  --margin-desktop: 50px;
+  --margin-mobile: 16px;
 }
 
-* {
+/* reset */
+*{
   box-sizing: border-box;
 }
 
-html,
-body {
+html, body{
+  margin: 0;
   width: 100%;
   height: 100%;
-  margin: 0;
   background: var(--bg);
   overflow: hidden;
   font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* STAGE: true center, no weird top bias */
-#stage {
+/* STAGE — centers canvas perfectly */
+#stage{
   width: 100vw;
-  height: 100vh;
+  height: calc(var(--vh, 1vh) * 100);
 
   display: flex;
-  align-items: center;     /* vertical center */
-  justify-content: center; /* horizontal center */
+  align-items: center;
+  justify-content: center;
 
-  padding: var(--margin);
+  padding: var(--margin-desktop);
 }
 
-/* Canvas scaling is handled in JS */
-canvas {
+/* p5 canvas */
+canvas{
   display: block;
   transform-origin: center center;
 }
 
-/* UI buttons */
-#ui {
+/* UI */
+#ui{
   position: fixed;
   right: 24px;
   bottom: 24px;
@@ -46,26 +47,30 @@ canvas {
   gap: 8px;
 }
 
-#ui button {
-  background: rgba(0, 0, 0, 0.6);
-  color: white;
+#ui button{
+  background: rgba(0,0,0,0.6);
+  color: #fff;
   border: 1px solid #333;
   padding: 8px 12px;
   cursor: pointer;
 }
 
-#ui button:hover {
-  background: rgba(255, 255, 255, 0.15);
+#ui button:hover{
+  background: rgba(255,255,255,0.15);
 }
 
-/* Mobile */
-@media (max-width: 700px) {
-  :root {
-    --margin: 16px;
+/* MOBILE */
+@media (max-width: 700px){
+  #stage{
+    padding: var(--margin-mobile);
   }
 
-  #ui {
+  #ui{
     right: 12px;
     bottom: 12px;
+  }
+
+  #ui button{
+    padding: 10px 14px;
   }
 }
