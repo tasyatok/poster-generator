@@ -1,37 +1,36 @@
 :root{
-  --m: 50px;         /* margins on desktop */
-  --m-mobile: 16px;  /* margins on mobile */
+  --bg: #000;
+  --m: 50px; /* desktop margin */
 }
 
-*{ box-sizing: border-box; }
+html, body {
+  height: 100%;
+}
 
-html, body{
+body{
   margin: 0;
-  height: 100%;
-  background: #000;
+  background: var(--bg);
   overflow: hidden; /* no scroll */
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
+/* Center stage */
 #stage{
-  height: 100%;
+  height: 100vh;
+  width: 100vw;
   display: grid;
   place-items: center;
   padding: var(--m);
+  box-sizing: border-box;
 }
 
-@media (max-width: 768px){
-  #stage{ padding: var(--m-mobile); }
-}
-
-/* This wrapper is always the "poster size".
-   We scale it in JS so it fits the viewport. */
-#frame{
-  width: 650px;
-  height: 910px;
+/* The canvas will be scaled by JS with transform: scale(...) */
+canvas{
+  display: block;
   transform-origin: center center;
 }
 
-/* Make canvas behave nicely */
-canvas{
-  display: block;
+/* Mobile: smaller margin so it fits */
+@media (max-width: 700px){
+  :root{ --m: 16px; }
 }
