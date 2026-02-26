@@ -10,25 +10,26 @@
 <body>
   <div id="stage"></div>
 
-  <!-- BOTTOM UI -->
   <div id="uiBottom">
-    <div class="uiSide uiLeft">
-      <div class="row">
-        <button class="btn small" onclick="colsDown()">–</button>
-        <div class="label">Columns</div>
-        <button class="btn small" onclick="colsUp()">+</button>
+    <!-- LEFT: grid controls -->
+    <div class="uiSide">
+      <div class="group">
+        <span class="label">Cols</span>
+        <button class="btn square" onclick="colsDown()">–</button>
+        <button class="btn square" onclick="colsUp()">+</button>
       </div>
 
-      <div class="row">
-        <button class="btn small" onclick="rowsDown()">–</button>
-        <div class="label">Rows</div>
-        <button class="btn small" onclick="rowsUp()">+</button>
+      <div class="group">
+        <span class="label">Rows</span>
+        <button class="btn square" onclick="rowsDown()">–</button>
+        <button class="btn square" onclick="rowsUp()">+</button>
       </div>
     </div>
 
-    <div class="uiSide uiRight">
-      <button class="btn primary" onclick="swapNextPair()">Swap</button>
-      <button class="btn" onclick="savePoster()">Save PNG</button>
+    <!-- RIGHT: actions -->
+    <div class="uiSide">
+      <button class="btn action" onclick="swapNextPair()">Swap</button>
+      <button class="btn action" onclick="savePoster()">Save</button>
     </div>
   </div>
 
