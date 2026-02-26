@@ -22,6 +22,15 @@ const cropMove = 220;
 
 let saveIndex = 0;
 
+// small perf: allocate once, resize on demand
+let cw = [];
+let rh = [];
+let gridDirty = true;
+
+function isMobile() {
+  return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+}
+
 function preload() {
   // If your images are inside /assets, change to "assets/05.jpg" etc.
   imgA = loadImage("05.jpg");
@@ -32,10 +41,13 @@ function setup() {
   cnv = createCanvas(POSTER_W, POSTER_H);
   cnv.parent("stage");
 
-  // Chrome can look different with high DPR; this keeps things consistent.
+  // Keep things consistent & lighter
   pixelDensity(1);
+  frameRate(isMobile() ? 30 : 45);
 
   noStroke();
+  imageMode(CORNER);
+
   fitToScreen();
 }
 
@@ -49,13 +61,22 @@ function draw() {
     return;
   }
 
+  // keep at least 2x2
   cols = max(2, cols);
   rows = max(2, rows);
 
-  tt += speed;
+  // Stable motion even when FPS fluctuates
+  const dt = deltaTime / 16.666; // 1.0 at ~60fps
+  tt += speed * dt;
+
+  // Ensure arrays match cols/rows only when needed
+  if (gridDirty || cw.length !== cols || rh.length !== rows) {
+    cw = new Array(cols);
+    rh = new Array(rows);
+    gridDirty = false;
+  }
 
   // --- row heights (accordion) ---
-  const rh = new Array(rows);
   let sumH = 0;
   for (let r = 0; r < rows; r++) {
     const s = 1 + amp * sin(tt + r * 0.55);
@@ -66,7 +87,6 @@ function draw() {
   for (let r = 0; r < rows; r++) rh[r] *= ky;
 
   // --- col widths (accordion) ---
-  const cw = new Array(cols);
   let sumW = 0;
   for (let c = 0; c < cols; c++) {
     const s = 1 + amp * sin(tt * 0.95 + c * 0.35);
@@ -76,20 +96,45 @@ function draw() {
   const kx = width / sumW;
   for (let c = 0; c < cols; c++) cw[c] *= kx;
 
-  // --- draw grid ---
-  let y = 0;
+  // --- draw grid with Chrome seam fix ---
+  // We snap cell boundaries to integers and force last col/row to hit the canvas edge.
+  let y0f = 0, y0i = 0;
+
   for (let r = 0; r < rows; r++) {
-    let x = 0;
+    const hFloat = rh[r];
+    let hInt;
+
+    if (r === rows - 1) {
+      hInt = height - y0i; // force edge
+    } else {
+      const y1f = y0f + hFloat;
+      const y1i = Math.round(y1f);
+      hInt = max(1, y1i - y0i);
+      y0f = y1f;
+    }
+
+    let x0f = 0, x0i = 0;
+
     for (let c = 0; c < cols; c++) {
-      const w = cw[c];
-      const h = rh[r];
+      const wFloat = cw[c];
+      let wInt;
+
+      if (c === cols - 1) {
+        wInt = width - x0i; // force edge
+      } else {
+        const x1f = x0f + wFloat;
+        const x1i = Math.round(x1f);
+        wInt = max(1, x1i - x0i);
+        x0f = x1f;
+      }
 
       const img = (r + c) % 2 === 0 ? imgA : imgB;
-      drawCropLinked(img, x, y, w, h, r, c);
+      drawCropLinked(img, x0i, y0i, wInt, hInt, r, c);
 
-      x += w;
+      x0i += wInt;
     }
-    y += rh[r];
+
+    y0i += hInt;
   }
 }
 
@@ -99,7 +144,7 @@ function windowResized() {
 
 // Scale the 650x910 canvas to fit viewport + margins without changing ratio.
 function fitToScreen() {
-  const m = windowWidth <= 700 ? 16 : 50; // match your CSS idea
+  const m = windowWidth <= 700 ? 16 : 50;
   const s = Math.min(
     (windowWidth - m * 2) / POSTER_W,
     (windowHeight - m * 2) / POSTER_H
@@ -142,10 +187,11 @@ function drawCropLinked(img, x, y, w, h, r, c) {
 
   const sx = int(sxf);
   const sy = int(syf);
-  const sw = max(1, int(swf));
-  const sh = max(1, int(shf));
+  const sw = max(2, int(swf));
+  const sh = max(2, int(shf));
 
-  image(img, x, y, w, h, sx, sy, sx + sw, sy + sh);
+  // Chrome seam killer: draw 1px bigger on destination
+  image(img, x, y, w + 1, h + 1, sx, sy, sx + sw, sy + sh);
   noTint();
 }
 
@@ -162,15 +208,19 @@ function frac(v) {
 // -------- UI functions for your HTML buttons --------
 function colsDown() {
   cols = max(2, cols - 1);
+  gridDirty = true;
 }
 function colsUp() {
   cols = min(12, cols + 1);
+  gridDirty = true;
 }
 function rowsDown() {
   rows = max(2, rows - 1);
+  gridDirty = true;
 }
 function rowsUp() {
   rows = min(12, rows + 1);
+  gridDirty = true;
 }
 function savePoster() {
   saveIndex++;
