@@ -1,63 +1,71 @@
-:root{
+:root {
   --bg: #000;
-  --m: 50px;            /* desktop margin */
+  --margin: 50px;
 }
 
-html, body{
-  height: 100%;
-}
-
-body{
-  margin: 0;
-  background: var(--bg);
-  overflow: hidden;     /* no scroll */
-  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-}
-
-/* Center the canvas perfectly */
-#stage{
-  height: 100vh;
-  width: 100vw;
-  display: grid;
-  place-items: center;
-  padding: var(--m);
+* {
   box-sizing: border-box;
 }
 
-/* p5 adds a canvas element */
-canvas{
-  display: block;
-  transform-origin: center center;
-  image-rendering: auto;
+html,
+body {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  background: var(--bg);
+  overflow: hidden;
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
 }
 
-/* UI panel */
-#ui{
+/* STAGE: true center, no weird top bias */
+#stage {
+  width: 100vw;
+  height: 100vh;
+
+  display: flex;
+  align-items: center;     /* vertical center */
+  justify-content: center; /* horizontal center */
+
+  padding: var(--margin);
+}
+
+/* Canvas scaling is handled in JS */
+canvas {
+  display: block;
+  transform-origin: center center;
+}
+
+/* UI buttons */
+#ui {
   position: fixed;
   right: 24px;
   bottom: 24px;
+
   display: flex;
   flex-direction: column;
-  gap: 10px;
-  z-index: 10;
+  gap: 8px;
 }
 
-#ui button{
-  background: #111;
-  color: #fff;
+#ui button {
+  background: rgba(0, 0, 0, 0.6);
+  color: white;
   border: 1px solid #333;
-  padding: 10px 14px;
-  font-size: 14px;
+  padding: 8px 12px;
   cursor: pointer;
 }
 
-#ui button:hover{
-  background: #fff;
-  color: #000;
+#ui button:hover {
+  background: rgba(255, 255, 255, 0.15);
 }
 
-/* Mobile: smaller margin + center stays */
-@media (max-width: 700px){
-  :root{ --m: 16px; }
-  #ui{ right: 14px; bottom: 14px; }
+/* Mobile */
+@media (max-width: 700px) {
+  :root {
+    --margin: 16px;
+  }
+
+  #ui {
+    right: 12px;
+    bottom: 12px;
+  }
 }
