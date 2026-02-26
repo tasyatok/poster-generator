@@ -1,28 +1,28 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Poster Generator</title>
-  <link rel="stylesheet" href="style.css" />
+  <head>
+    <meta charset="utf-8" />
+    <title>Poster Generator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-  <!-- p5 -->
-  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
-</head>
+    <!-- p5 -->
+    <script src="https://cdn.jsdelivr.net/npm/p5@1.9.3/lib/p5.min.js"></script>
 
-<body>
-  <main id="stage"></main>
+    <!-- your files -->
+    <link rel="stylesheet" href="style.css" />
+    <script defer src="sketch.js"></script>
+  </head>
 
-  <div id="ui">
-    <button onclick="colsDown()">− Col</button>
-    <button onclick="colsUp()">+ Col</button>
+  <body>
+    <div id="stage"></div>
 
-    <button onclick="rowsDown()">− Row</button>
-    <button onclick="rowsUp()">+ Row</button>
-
-    <button onclick="savePoster()">Save PNG</button>
-  </div>
-
-  <script src="sketch.js"></script>
-</body>
+    <!-- Controls -->
+    <div id="ui">
+      <button onclick="colsDown()">− Col</button>
+      <button onclick="colsUp()">+ Col</button>
+      <button onclick="rowsDown()">− Row</button>
+      <button onclick="rowsUp()">+ Row</button>
+      <button onclick="savePoster()">Save PNG</button>
+    </div>
+  </body>
 </html>
