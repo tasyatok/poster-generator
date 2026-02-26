@@ -1,4 +1,4 @@
-// sketch.js — Munken-ish accordion grid (images only) + UI hooks
+// sketch.js — Munken-ish accordion grid (images only) + fixed swap chain + UI hooks
 // True poster size stays 650x910. The page scales it via JS transform.
 
 const POSTER_W = 650;
@@ -16,7 +16,7 @@ let amp = 0.95;
 
 let imgs = [];
 
-// ✅ removed 01.jpg and 07.jpg from the cycle
+// Image pool that exists in your repo
 let imgFiles = [
   "02.jpg",
   "03.jpg",
@@ -31,6 +31,17 @@ let imgFiles = [
 // --- TWO-IMAGE MODE (dominant pair) ---
 let activeA = 0; // index in imgs
 let activeB = 0; // index in imgs
+
+// Fixed chain of pairs (by filename)
+const swapChain = [
+  ["05.jpg", "03.jpg"],
+  ["03.jpg", "09.jpg"],
+  ["09.jpg", "06.jpg"],
+  ["06.jpg", "04.jpg"],
+  ["04.jpg", "02.jpg"],
+  ["02.jpg", "08.jpg"]
+];
+let chainIdx = 0;
 
 const minCell = 6;
 const fadeStart = 22;
@@ -48,13 +59,11 @@ function setup() {
   cnv = createCanvas(POSTER_W, POSTER_H);
   cnv.parent("stage");
 
-  // Keeps things consistent (and faster) across browsers
   pixelDensity(1);
   noStroke();
 
-  // Starting point always: 03 + 05 (as requested)
-  activeA = indexOfFile("03.jpg");
-  activeB = indexOfFile("05.jpg");
+  // Start exactly: 05–03
+  applyChainPair(0);
 
   fitToScreen();
 }
@@ -130,8 +139,7 @@ function fitToScreen() {
   cnv.elt.style.transform = `scale(${scale})`;
 }
 
-// ✅ FIX: avoid crop “jump” by removing wrap-around.
-// We clamp crop positions instead of wrapping modulo.
+// ✅ No crop teleporting: clamp instead of wrap
 function drawCropLinked(img, x, y, w, h, r, c) {
   if (!img) return;
 
@@ -150,11 +158,9 @@ function drawCropLinked(img, x, y, w, h, r, c) {
 
   const phase = tt + r * 0.55 + c * 0.35;
 
-  // movement amount (linked to the same motion)
   let mx = cropMove * sin(phase) * (1.0 - constrain(w / (cell * 2.0), 0, 1));
   let my = cropMove * cos(phase) * (1.0 - constrain(h / (cell * 2.0), 0, 1));
 
-  // clamp movement to avoid hitting edges -> no teleporting jump
   const maxMoveX = max(0, (img.width - swf) * 0.5);
   const maxMoveY = max(0, (img.height - shf) * 0.5);
   mx = constrain(mx, -maxMoveX, maxMoveX);
@@ -175,14 +181,20 @@ function drawCropLinked(img, x, y, w, h, r, c) {
   noTint();
 }
 
-function frac(v) {
-  return v - floor(v);
-}
+function frac(v) { return v - floor(v); }
 
 // --- helper: find file index safely ---
 function indexOfFile(name) {
   const i = imgFiles.indexOf(name);
   return (i >= 0) ? i : 0;
+}
+
+// Apply a pair from the chain
+function applyChainPair(idx) {
+  chainIdx = (idx + swapChain.length) % swapChain.length;
+  const [aName, bName] = swapChain[chainIdx];
+  activeA = indexOfFile(aName);
+  activeB = indexOfFile(bName);
 }
 
 // -------- UI functions (called by HTML buttons) --------
@@ -191,24 +203,14 @@ function colsUp()   { cols = min(12, cols + 1); }
 function rowsDown() { rows = max(2, rows - 1); }
 function rowsUp()   { rows = min(12, rows + 1); }
 
-// ✅ Save works (this is the one HTML calls)
 function savePoster() {
   saveIndex++;
   saveCanvas(`poster_${nf(saveIndex, 5)}`, "png");
 }
 
-// -------- TWO-IMAGE SWAP CHAIN --------
-// (A, B) -> (B, randomNewNotEqualToB)
-function swapRandomCellImage() {
-  if (!imgs.length) return;
-
-  activeA = activeB;
-
-  let next = floor(random(imgs.length));
-  if (imgs.length > 1) {
-    while (next === activeA) next = floor(random(imgs.length));
-  }
-  activeB = next;
+// ✅ Fixed swap logic: step through the chain in order
+function swapNextPair() {
+  applyChainPair(chainIdx + 1);
 }
 
 // -------- keyboard shortcuts --------
@@ -221,5 +223,5 @@ function keyPressed() {
 
   if (key === "s" || key === "S") savePoster();
 
-  if (key === " ") swapRandomCellImage();
+  if (key === " ") swapNextPair();
 }
