@@ -1,8 +1,8 @@
-// Munken-ish accordion grid
-// Canvas keeps fixed ratio (650 x 910), scaled via CSS
+// Munken-ish accordion grid (image fragments)
+// Fixed: taller poster ratio + black page background
 
 const BASE_W = 650;
-const BASE_H = 910;
+const BASE_H = 1200; // <-- more prolonged poster (taller than 910)
 
 let cols = 3, rows = 5;
 let cell = 130;
@@ -30,11 +30,11 @@ function setup(){
 }
 
 function draw(){
-  background(0);
+  background(0); // poster background stays black
   t += speed;
 
   if(!imgA || !imgB){
-    fill(255,0,0);
+    fill(255, 0, 0);
     textSize(16);
     text("Images missing.\nPut 05.jpg and 03.jpg into /assets.", 20, 30);
     return;
@@ -80,30 +80,28 @@ function draw(){
 }
 
 function drawCrop(img, x, y, w, h, r, c){
-  let tiny = min(w,h);
-  if(tiny <= minCell+0.5) return;
+  let tiny = min(w, h);
+  if(tiny <= minCell + 0.5) return;
 
   let alpha = 255;
-  if(tiny < fadeStart){
-    alpha = map(tiny, minCell, fadeStart, 0, 255);
-  }
+  if(tiny < fadeStart) alpha = map(tiny, minCell, fadeStart, 0, 255);
   tint(255, alpha);
 
-  // Crop window always valid
-  let sw = constrain(w / width * img.width * 1.4, 40, img.width);
-  let sh = constrain(h / height * img.height * 1.4, 40, img.height);
+  // Crop window always valid + always fills the cell
+  let sw = constrain((w / width)  * img.width  * 1.4, 40, img.width);
+  let sh = constrain((h / height) * img.height * 1.4, 40, img.height);
 
   let ax = frac(sin((c+1)*12.9898 + (r+1)*78.233) * 43758.5453);
   let ay = frac(sin((c+1)*93.9898 + (r+1)*67.345) * 24634.6345);
 
   let phase = t + r*0.55 + c*0.35;
-  let mx = cropMove * sin(phase) * (1.0 - constrain(w/(cell*2),0,1));
-  let my = cropMove * cos(phase) * (1.0 - constrain(h/(cell*2),0,1));
+  let mx = cropMove * sin(phase) * (1.0 - constrain(w/(cell*2), 0, 1));
+  let my = cropMove * cos(phase) * (1.0 - constrain(h/(cell*2), 0, 1));
 
-  let bx = ax * (img.width - sw);
+  let bx = ax * (img.width  - sw);
   let by = ay * (img.height - sh);
 
-  let sx = wrap(bx + mx, img.width - sw);
+  let sx = wrap(bx + mx, img.width  - sw);
   let sy = wrap(by + my, img.height - sh);
 
   image(img, x, y, w, h, sx, sy, sx+sw, sy+sh);
@@ -111,9 +109,9 @@ function drawCrop(img, x, y, w, h, r, c){
 }
 
 function wrap(v, maxv){
-  if(maxv<=0) return 0;
-  v%=maxv;
-  if(v<0) v+=maxv;
+  if(maxv <= 0) return 0;
+  v %= maxv;
+  if(v < 0) v += maxv;
   return v;
 }
 
