@@ -10,12 +10,9 @@
 <body>
   <div id="stage"></div>
 
-  <!-- LEFT CONTROLS -->
-  <div id="ui">
-    <button class="btn primary" onclick="swapRandomCellImage()">Swap</button>
-    <button class="btn" onclick="savePoster()">Save PNG</button>
-
-    <div class="group">
+  <!-- BOTTOM UI -->
+  <div id="uiBottom">
+    <div class="uiSide uiLeft">
       <div class="row">
         <button class="btn small" onclick="colsDown()">–</button>
         <div class="label">Columns</div>
@@ -27,6 +24,11 @@
         <div class="label">Rows</div>
         <button class="btn small" onclick="rowsUp()">+</button>
       </div>
+    </div>
+
+    <div class="uiSide uiRight">
+      <button class="btn primary" onclick="swapNextPair()">Swap</button>
+      <button class="btn" onclick="savePoster()">Save PNG</button>
     </div>
   </div>
 
