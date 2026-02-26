@@ -1,0 +1,12 @@
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #000;
+  overflow: hidden; /* no scroll */
+}
+
+canvas {
+  display: block;
+  position: absolute;
+  transform-origin: 0 0; /* we scale from top-left */
+}
