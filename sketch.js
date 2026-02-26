@@ -1,101 +1,110 @@
-// Keys: SPACE pause/play, p save png
-// Put images in: assets/05.jpg and assets/03.jpg
+// Munken-ish accordion grid + image fragments
+// Put 05.jpg and 03.jpg into /assets (or change paths below)
 
-let cols = 5, rows = 3;
-let cell = 130;
-let t = 0;
-let speed = 0.01;
-let amp = 0.65;          // how much the accordion breathes
-let minStrip = 10;       // never disappear fully
-let cropMove = 220;      // crop slide amount
+let cols = 3, rows = 5;
+let cell = 130, tt = 0, speed = 0.01, amp = 0.95;
 
 let imgA, imgB;
-let paused = false;
+
+let minCell = 6;
+let fadeStart = 22;
+let cropMove = 220;
 
 function preload() {
+  // If your images are in /assets, keep this.
+  // If they're in the project root, change to "05.jpg" etc.
   imgA = loadImage("assets/05.jpg");
   imgB = loadImage("assets/03.jpg");
 }
 
 function setup() {
-  createCanvas(650, 910);
+  const cnv = createCanvas(650, 910);
+  cnv.parent("sketch-holder");
   pixelDensity(window.devicePixelRatio || 1);
   noStroke();
 }
 
 function draw() {
-  if (!paused) t += speed;
   background(0);
+  tt += speed;
 
-  // build row heights (accordion)
+  if (!imgA || !imgB) {
+    fill(255, 0, 0);
+    textSize(16);
+    text("Missing images.\nPut 05.jpg and 03.jpg into /assets.", 20, 30);
+    return;
+  }
+
+  cols = max(2, cols);
+  rows = max(2, rows);
+
+  // --- row heights ---
   let rh = new Array(rows);
   let sumH = 0;
   for (let r = 0; r < rows; r++) {
-    let s = 1 + amp * Math.sin(t + r * 0.55);
-    rh[r] = Math.max(minStrip, cell * s);
+    let s = 1 + amp * sin(tt + r * 0.55);
+    rh[r] = max(minCell, cell * s);
     sumH += rh[r];
   }
-  // normalize to fit height
   let ky = height / sumH;
   for (let r = 0; r < rows; r++) rh[r] *= ky;
 
-  // draw rows
+  // --- col widths ---
+  let cw = new Array(cols);
+  let sumW = 0;
+  for (let c = 0; c < cols; c++) {
+    let s = 1 + amp * sin(tt * 0.95 + c * 0.35);
+    cw[c] = max(minCell, cell * s);
+    sumW += cw[c];
+  }
+  let kx = width / sumW;
+  for (let c = 0; c < cols; c++) cw[c] *= kx;
+
+  // --- draw grid ---
   let y = 0;
   for (let r = 0; r < rows; r++) {
-    drawRow(r, y, rh[r]);
+    let x = 0;
+    for (let c = 0; c < cols; c++) {
+      let w = cw[c], h = rh[r];
+      let img = ((r + c) % 2 === 0) ? imgA : imgB;
+      drawCropLinked(img, x, y, w, h, r, c);
+      x += w;
+    }
     y += rh[r];
   }
 }
 
-function drawRow(r, y, h) {
-  // build column widths (accordion)
-  let cw = new Array(cols);
-  let sumW = 0;
-  for (let c = 0; c < cols; c++) {
-    let s = 1 + amp * Math.sin(t + r * 0.55 + c * 0.25);
-    cw[c] = Math.max(minStrip, cell * s);
-    sumW += cw[c];
-  }
-  // normalize to fit width
-  let kx = width / sumW;
-  for (let c = 0; c < cols; c++) cw[c] *= kx;
-
-  let x = 0;
-  for (let c = 0; c < cols; c++) {
-    let w = cw[c];
-    let img = (r + c) % 2 === 0 ? imgA : imgB;
-    drawCropLinked(img, x, y, w, h, r, c);
-    x += w;
-  }
-}
-
 function drawCropLinked(img, x, y, w, h, r, c) {
-  // deterministic anchor per cell
-  let ax = frac(Math.sin((c + 1) * 12.9898 + (r + 1) * 78.233) * 43758.5453);
-  let ay = frac(Math.sin((c + 1) * 93.9898 + (r + 1) * 67.345) * 24634.6345);
+  if (!img) return;
 
-  // crop window size linked to cell size
-  let sw = constrain(map(w, 0, width, 40, img.width * 0.55), 40, img.width);
-  let sh = constrain(map(h, 0, height, 40, img.height * 0.55), 40, img.height);
+  let tiny = min(w, h);
+  if (tiny <= minCell + 0.5) return;
 
-  // motion-linked shift (more when skinny)
-  let phase = t + r * 0.55 + c * 0.35;
-  let skinnyX = 1 - constrain(w / (cell * 2.0), 0, 1);
-  let skinnyY = 1 - constrain(h / (cell * 2.0), 0, 1);
-  let mx = cropMove * Math.sin(phase) * skinnyX;
-  let my = cropMove * Math.cos(phase) * skinnyY;
+  let a = 255;
+  if (tiny < fadeStart) a = map(tiny, minCell, fadeStart, 0, 255);
+  tint(255, a);
 
-  // base + slide, wrapped
-  let baseX = ax * (img.width - sw);
-  let baseY = ay * (img.height - sh);
-  let sx = wrap(baseX + mx, img.width - sw);
-  let sy = wrap(baseY + my, img.height - sh);
+  let swf = constrain(map(w, 0, width, 40, img.width * 0.55), 20, img.width);
+  let shf = constrain(map(h, 0, height, 40, img.height * 0.55), 20, img.height);
+
+  let ax = frac(sin((c + 1) * 12.9898 + (r + 1) * 78.233) * 43758.5453);
+  let ay = frac(sin((c + 1) * 93.9898 + (r + 1) * 67.345) * 24634.6345);
+
+  let phase = tt + r * 0.55 + c * 0.35;
+  let mx = cropMove * sin(phase) * (1.0 - constrain(w / (cell * 2.0), 0, 1));
+  let my = cropMove * cos(phase) * (1.0 - constrain(h / (cell * 2.0), 0, 1));
+
+  let baseX = ax * (img.width - swf);
+  let baseY = ay * (img.height - shf);
+
+  let sxf = wrap(baseX + mx, img.width - swf);
+  let syf = wrap(baseY + my, img.height - shf);
+
+  let sx = int(sxf), sy = int(syf);
+  let sw = max(1, int(swf)), sh = max(1, int(shf));
 
   image(img, x, y, w, h, sx, sy, sx + sw, sy + sh);
-
-  // dark overlay (full cell)
-  fill(0, 120);
-  rect(x, y, w, h);
+  noTint();
 }
 
 function wrap(v, maxv) {
@@ -106,10 +115,5 @@ function wrap(v, maxv) {
 }
 
 function frac(v) {
-  return v - Math.floor(v);
-}
-
-function keyPressed() {
-  if (key === " ") paused = !paused;
-  if (key === "p") saveCanvas("poster", "png");
+  return v - floor(v);
 }
