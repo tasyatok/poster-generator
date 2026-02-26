@@ -1,12 +1,37 @@
-html, body {
+:root{
+  --m: 50px;         /* margins on desktop */
+  --m-mobile: 16px;  /* margins on mobile */
+}
+
+*{ box-sizing: border-box; }
+
+html, body{
   margin: 0;
   height: 100%;
   background: #000;
   overflow: hidden; /* no scroll */
 }
 
-canvas {
+#stage{
+  height: 100%;
+  display: grid;
+  place-items: center;
+  padding: var(--m);
+}
+
+@media (max-width: 768px){
+  #stage{ padding: var(--m-mobile); }
+}
+
+/* This wrapper is always the "poster size".
+   We scale it in JS so it fits the viewport. */
+#frame{
+  width: 650px;
+  height: 910px;
+  transform-origin: center center;
+}
+
+/* Make canvas behave nicely */
+canvas{
   display: block;
-  position: absolute;
-  transform-origin: 0 0; /* we scale from top-left */
 }
