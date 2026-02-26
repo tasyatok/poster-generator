@@ -31,6 +31,10 @@ function isMobile() {
   return /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 }
 
+// NEW: mobile Safari timestep smoothing (prevents jumpy “teleports”)
+const MOBILE = isMobile();
+let dtSmooth = 1;
+
 function preload() {
   // If your images are inside /assets, change to "assets/05.jpg" etc.
   imgA = loadImage("05.jpg");
@@ -43,7 +47,9 @@ function setup() {
 
   // Keep things consistent & lighter
   pixelDensity(1);
-  frameRate(isMobile() ? 30 : 45);
+
+  // NEW: mobile prefers stable 24fps over stuttery 30+
+  frameRate(MOBILE ? 24 : 45);
 
   noStroke();
   imageMode(CORNER);
@@ -65,9 +71,11 @@ function draw() {
   cols = max(2, cols);
   rows = max(2, rows);
 
-  // Stable motion even when FPS fluctuates
-  const dt = deltaTime / 16.666; // 1.0 at ~60fps
-  tt += speed * dt;
+  // NEW: clamp + smooth deltaTime so mobile Safari can’t jump frames
+  let dt = deltaTime / 16.666;          // 1.0 at ~60fps
+  dt = constrain(dt, 0.75, 1.35);       // clamp spikes (prevents teleport)
+  dtSmooth = lerp(dtSmooth, dt, 0.10);  // smooth jitter
+  tt += speed * dtSmooth;               // stable motion
 
   // Ensure arrays match cols/rows only when needed
   if (gridDirty || cw.length !== cols || rh.length !== rows) {
@@ -190,7 +198,7 @@ function drawCropLinked(img, x, y, w, h, r, c) {
   const sw = max(2, int(swf));
   const sh = max(2, int(shf));
 
-  // Chrome seam killer: draw 1px bigger on destination
+  // Seam killer: draw 1px bigger on destination
   image(img, x, y, w + 1, h + 1, sx, sy, sx + sw, sy + sh);
   noTint();
 }
