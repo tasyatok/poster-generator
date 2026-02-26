@@ -6,46 +6,18 @@
   <title>Poster Generator</title>
 
   <style>
-    :root{
-      --m: 50px;
-      --bg: #000;
-    }
-
-    html, body{
-      margin:0;
-      height:100%;
-      background: var(--bg);
-      overflow:hidden;
-    }
-
-    /* Center the poster in the remaining space */
-    body{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-    }
-
+    :root{ --m: 50px; --bg:#000; }
+    html,body{ margin:0; height:100%; background:var(--bg); overflow:hidden; }
+    body{ display:flex; align-items:center; justify-content:center; }
     #frame{
       width: calc(100vw - var(--m)*2);
       height: calc(100vh - var(--m)*2);
-      display:flex;
-      align-items:center;
-      justify-content:center;
+      display:flex; align-items:center; justify-content:center;
     }
-
-    canvas{
-      display:block;
-      /* The magic: scale down proportionally, never squash */
-      max-width:100%;
-      max-height:100%;
-    }
-
-    @media (max-width: 768px){
-      :root{ --m: 16px; }
-    }
+    canvas{ display:block; max-width:100%; max-height:100%; }
+    @media (max-width: 768px){ :root{ --m:16px; } }
   </style>
 </head>
-
 <body>
   <div id="frame"></div>
 
