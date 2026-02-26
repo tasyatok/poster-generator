@@ -1,5 +1,5 @@
 // sketch.js — Munken-ish accordion grid (images only) + UI hooks
-// True poster size stays 650x910. The page scales it via CSS transform.
+// True poster size stays 650x910. The page scales it via JS transform.
 
 const POSTER_W = 650;
 const POSTER_H = 910;
@@ -15,14 +15,14 @@ let speed = 0.01;
 let amp = 0.95;
 
 let imgs = [];
+
+// ✅ removed 01.jpg and 07.jpg from the cycle
 let imgFiles = [
-  "01.jpg",
   "02.jpg",
   "03.jpg",
   "04.jpg",
   "05.jpg",
   "06.jpg",
-  "07.jpg",
   "08.jpg",
   "09.jpg",
   "10.jpg"
@@ -48,11 +48,11 @@ function setup() {
   cnv = createCanvas(POSTER_W, POSTER_H);
   cnv.parent("stage");
 
-  // Helps consistency + performance across browsers
+  // Keeps things consistent (and faster) across browsers
   pixelDensity(1);
   noStroke();
 
-  // Start pair: 03 + 05 (as requested)
+  // Starting point always: 03 + 05 (as requested)
   activeA = indexOfFile("03.jpg");
   activeB = indexOfFile("05.jpg");
 
@@ -62,7 +62,7 @@ function setup() {
 function draw() {
   background(0);
 
-  // Wait until all images have real dimensions
+  // Wait for real image dimensions (avoids black frames)
   if (!imgs.length || imgs.some(im => !im || im.width === 0)) {
     fill(255);
     textSize(16);
@@ -130,7 +130,8 @@ function fitToScreen() {
   cnv.elt.style.transform = `scale(${scale})`;
 }
 
-// --- deterministic crop linked to the same motion ---
+// ✅ FIX: avoid crop “jump” by removing wrap-around.
+// We clamp crop positions instead of wrapping modulo.
 function drawCropLinked(img, x, y, w, h, r, c) {
   if (!img) return;
 
@@ -148,14 +149,22 @@ function drawCropLinked(img, x, y, w, h, r, c) {
   const ay = frac(sin((c + 1) * 93.9898 + (r + 1) * 67.345) * 24634.6345);
 
   const phase = tt + r * 0.55 + c * 0.35;
-  const mx = cropMove * sin(phase) * (1.0 - constrain(w / (cell * 2.0), 0, 1));
-  const my = cropMove * cos(phase) * (1.0 - constrain(h / (cell * 2.0), 0, 1));
+
+  // movement amount (linked to the same motion)
+  let mx = cropMove * sin(phase) * (1.0 - constrain(w / (cell * 2.0), 0, 1));
+  let my = cropMove * cos(phase) * (1.0 - constrain(h / (cell * 2.0), 0, 1));
+
+  // clamp movement to avoid hitting edges -> no teleporting jump
+  const maxMoveX = max(0, (img.width - swf) * 0.5);
+  const maxMoveY = max(0, (img.height - shf) * 0.5);
+  mx = constrain(mx, -maxMoveX, maxMoveX);
+  my = constrain(my, -maxMoveY, maxMoveY);
 
   const baseX = ax * (img.width - swf);
   const baseY = ay * (img.height - shf);
 
-  const sxf = wrap(baseX + mx, img.width - swf);
-  const syf = wrap(baseY + my, img.height - shf);
+  const sxf = constrain(baseX + mx, 0, img.width - swf);
+  const syf = constrain(baseY + my, 0, img.height - shf);
 
   const sx = int(sxf);
   const sy = int(syf);
@@ -166,12 +175,6 @@ function drawCropLinked(img, x, y, w, h, r, c) {
   noTint();
 }
 
-function wrap(v, maxv) {
-  if (maxv <= 1) return 0;
-  v = v % maxv;
-  if (v < 0) v += maxv;
-  return v;
-}
 function frac(v) {
   return v - floor(v);
 }
@@ -182,39 +185,30 @@ function indexOfFile(name) {
   return (i >= 0) ? i : 0;
 }
 
-// -------- UI functions for your HTML buttons --------
+// -------- UI functions (called by HTML buttons) --------
 function colsDown() { cols = max(2, cols - 1); }
 function colsUp()   { cols = min(12, cols + 1); }
 function rowsDown() { rows = max(2, rows - 1); }
 function rowsUp()   { rows = min(12, rows + 1); }
 
+// ✅ Save works (this is the one HTML calls)
 function savePoster() {
   saveIndex++;
   saveCanvas(`poster_${nf(saveIndex, 5)}`, "png");
 }
 
-// -------- THE BUTTON FEATURE (two-image swap chain) --------
-// Keeps exactly 2 images on canvas.
+// -------- TWO-IMAGE SWAP CHAIN --------
 // (A, B) -> (B, randomNewNotEqualToB)
 function swapRandomCellImage() {
   if (!imgs.length) return;
 
-  const oldA = activeA;
-  const oldB = activeB;
-
-  activeA = oldB;
+  activeA = activeB;
 
   let next = floor(random(imgs.length));
   if (imgs.length > 1) {
     while (next === activeA) next = floor(random(imgs.length));
   }
   activeB = next;
-
-  // optional: if you *never* want the same image to appear again immediately
-  // (prevents A->B->A bounce), uncomment:
-  // if (imgs.length > 2) {
-  //   while (activeB === activeA || activeB === oldA) activeB = floor(random(imgs.length));
-  // }
 }
 
 // -------- keyboard shortcuts --------
@@ -227,6 +221,5 @@ function keyPressed() {
 
   if (key === "s" || key === "S") savePoster();
 
-  // nice shortcut: space swaps the pair too
   if (key === " ") swapRandomCellImage();
 }
