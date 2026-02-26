@@ -1,13 +1,12 @@
 :root{
   --bg:#000;
-  --ui:rgba(255,255,255,0.08);
-  --ui2:rgba(255,255,255,0.12);
-  --txt:rgba(255,255,255,0.9);
+  --txt:rgba(255,255,255,0.86);
+  --stroke:rgba(255,255,255,0.18);
+  --hover:rgba(255,255,255,0.10);
+  --press:rgba(255,255,255,0.14);
 }
 
-html, body{
-  height:100%;
-}
+html, body{ height:100%; }
 
 body{
   margin:0;
@@ -16,106 +15,96 @@ body{
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
-/* Center the canvas stage */
+/* Stage truly centered */
 #stage{
-  height:100vh;
-  width:100vw;
+  position:fixed;
+  inset:0;
   display:grid;
   place-items:center;
   box-sizing:border-box;
 }
 
-/* Canvas scaled in JS via transform */
+/* The canvas is scaled by JS (transform: scale(...)) */
 canvas{
   display:block;
   transform-origin:center center;
 }
 
-/* BOTTOM UI (split left/right) */
+/* Minimal bottom controls (does NOT affect centering) */
 #uiBottom{
   position:fixed;
   left:0;
   right:0;
   bottom:0;
-  padding:16px 18px;
+  padding:12px 14px;
   display:flex;
   justify-content:space-between;
-  gap:16px;
+  align-items:flex-end;
+  gap:10px;
   z-index:10;
-  pointer-events:none; /* so canvas still gets touch unless on controls */
+
+  pointer-events:none; /* only buttons clickable */
 }
 
 .uiSide{
   display:flex;
-  gap:10px;
-  align-items:flex-end;
+  gap:8px;
+  align-items:center;
   pointer-events:auto;
 }
 
-.uiLeft{
+/* A tiny group label + +/- buttons */
+.group{
   display:flex;
-  gap:10px;
-}
-
-.uiRight{
-  display:flex;
-  gap:10px;
-}
-
-.btn{
-  background:var(--ui);
-  border:1px solid rgba(255,255,255,0.18);
-  color:var(--txt);
-  padding:10px 12px;
-  border-radius:0;
-  cursor:pointer;
-  letter-spacing:0.02em;
-  font-size:13px;
-  line-height:1;
-  user-select:none;
-  white-space:nowrap;
-}
-
-.btn:hover{ background:var(--ui2); }
-.btn.primary{ background:rgba(255,255,255,0.14); }
-
-.btn.small{
-  width:38px;
-  padding:10px 0;
-  font-size:16px;
-}
-
-/* Compact Swiss-ish control rows */
-.row{
-  display:grid;
-  grid-template-columns:38px 1fr 38px;
   align-items:center;
-  gap:10px;
-  padding:10px 12px;
-  background:rgba(255,255,255,0.06);
-  border:1px solid rgba(255,255,255,0.14);
-  min-width:210px;
+  gap:6px;
+  padding:6px 8px;
+  border:1px solid var(--stroke);
+  background:transparent;
 }
 
 .label{
-  color:rgba(255,255,255,0.85);
-  font-size:13px;
-  letter-spacing:0.02em;
-  text-align:center;
+  color:var(--txt);
+  font-size:11px;
+  letter-spacing:0.04em;
+  text-transform:uppercase;
+  opacity:0.8;
+  padding:0 4px;
 }
 
-/* Mobile tweaks */
+.btn{
+  appearance:none;
+  border:1px solid var(--stroke);
+  background:transparent;
+  color:var(--txt);
+  height:28px;
+  padding:0 10px;
+  font-size:12px;
+  line-height:1;
+  cursor:pointer;
+  user-select:none;
+}
+
+.btn.square{
+  width:28px;
+  padding:0;
+  font-size:14px;
+}
+
+.btn:hover{ background:var(--hover); }
+.btn:active{ background:var(--press); }
+
+/* Make the right side buttons slightly wider but still minimal */
+.btn.action{
+  padding:0 12px;
+  letter-spacing:0.02em;
+}
+
+/* Mobile: smaller padding so it doesn’t cover the poster */
 @media (max-width: 700px){
-  #uiBottom{
-    padding:12px 12px;
-    gap:12px;
-  }
-  .row{
-    min-width:180px;
-    padding:8px 10px;
-    gap:8px;
-  }
-  .btn{
-    padding:10px 10px;
-  }
+  #uiBottom{ padding:10px 10px; }
+  .btn{ height:26px; font-size:11px; }
+  .btn.square{ width:26px; font-size:13px; }
+  .group{ padding:5px 6px; gap:5px; }
+  .label{ font-size:10px; }
 }
