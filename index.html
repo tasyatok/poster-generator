@@ -1,22 +1,36 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Poster Generator</title>
-  <link rel="stylesheet" href="style.css" />
+:root{
+  --bg: #000;
+  --m: 50px; /* desktop margin */
+}
 
-  <!-- p5 (CDN) -->
-  <script src="https://cdn.jsdelivr.net/npm/p5@1.9.4/lib/p5.min.js"></script>
-</head>
+html, body {
+  height: 100%;
+}
 
-<body>
-  <main id="stage">
-    <div id="frame">
-      <!-- p5 will inject the canvas here -->
-    </div>
-  </main>
+body{
+  margin: 0;
+  background: var(--bg);
+  overflow: hidden; /* no scroll */
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
 
-  <script src="sketch.js"></script>
-</body>
-</html>
+/* Center stage */
+#stage{
+  height: 100vh;
+  width: 100vw;
+  display: grid;
+  place-items: center;
+  padding: var(--m);
+  box-sizing: border-box;
+}
+
+/* The canvas will be scaled by JS with transform: scale(...) */
+canvas{
+  display: block;
+  transform-origin: center center;
+}
+
+/* Mobile: smaller margin so it fits */
+@media (max-width: 700px){
+  :root{ --m: 16px; }
+}
