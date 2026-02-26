@@ -1,20 +1,20 @@
 :root{
   --bg: #000;
-  --m: 50px; /* desktop margin */
+  --m: 50px;            /* desktop margin */
 }
 
-html, body {
+html, body{
   height: 100%;
 }
 
 body{
   margin: 0;
   background: var(--bg);
-  overflow: hidden; /* no scroll */
+  overflow: hidden;     /* no scroll */
   font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
-/* Center stage */
+/* Center the canvas perfectly */
 #stage{
   height: 100vh;
   width: 100vw;
@@ -24,16 +24,13 @@ body{
   box-sizing: border-box;
 }
 
-/* The canvas will be scaled by JS with transform: scale(...) */
+/* p5 adds a canvas element */
 canvas{
   display: block;
   transform-origin: center center;
+  image-rendering: auto;
 }
 
-/* Mobile: smaller margin so it fits */
-@media (max-width: 700px){
-  :root{ --m: 16px; }
-}
 /* UI panel */
 #ui{
   position: fixed;
@@ -57,4 +54,10 @@ canvas{
 #ui button:hover{
   background: #fff;
   color: #000;
+}
+
+/* Mobile: smaller margin + center stays */
+@media (max-width: 700px){
+  :root{ --m: 16px; }
+  #ui{ right: 14px; bottom: 14px; }
 }
