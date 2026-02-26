@@ -1,180 +1,189 @@
-// Keep poster "design size" constant:
+// sketch.js — Munken-ish accordion grid (images only) + UI hooks
+// True poster size stays 650x910. The page scales it via CSS transform.
+
 const POSTER_W = 650;
 const POSTER_H = 910;
 
-// Layout margin in CSS is 50px desktop, 16px mobile.
-// We'll read the actual padding from the stage element.
-let stageEl, cnv;
+let cnv;
+
+let cols = 3;
+let rows = 5;
+
+let cell = 130;
+let tt = 0;
+let speed = 0.01;
+let amp = 0.95;
+
 let imgA, imgB;
 
-let cols = 3, rows = 5;
-let cell = 130, tt = 0, speed = 0.01, amp = 0.95;
+const minCell = 6;
+const fadeStart = 22;
+const cropMove = 220;
 
-let minCell = 6;
-let fadeStart = 22;
-let cropMove = 220;
+let saveIndex = 0;
 
-function preload(){
-  // Put images either in root ("/05.jpg") or assets ("/assets/05.jpg") — be consistent.
+function preload() {
+  // If your images are inside /assets, change to "assets/05.jpg" etc.
   imgA = loadImage("05.jpg");
   imgB = loadImage("03.jpg");
 }
 
-function setup(){
+function setup() {
   cnv = createCanvas(POSTER_W, POSTER_H);
-  // attach canvas into our stage container
-  stageEl = document.getElementById("stage");
-  cnv.parent(stageEl);
+  cnv.parent("stage");
 
-  pixelDensity(window.devicePixelRatio || 1);
+  // Chrome can look different with high DPR; this keeps things consistent.
+  pixelDensity(1);
+
   noStroke();
-
-  fitCanvasToViewport();
+  fitToScreen();
 }
 
-function windowResized(){
-  fitCanvasToViewport();
-}
-
-function fitCanvasToViewport(){
-  // Compute available space inside stage padding (CSS margins)
-  const rect = stageEl.getBoundingClientRect();
-
-  // available drawing area inside padding is rect.width/height already includes padding,
-  // but since stage uses padding and box-sizing border-box, it’s safe:
-  const availW = rect.width;
-  const availH = rect.height;
-
-  // scale so entire 650x910 fits, preserving aspect ratio
-  const s = Math.min(availW / POSTER_W, availH / POSTER_H);
-
-  // Apply visual scale without changing internal canvas resolution
-  cnv.elt.style.transform = `scale(${s})`;
-}
-
-function draw(){
+function draw() {
   background(0);
-  tt += speed;
 
-  if(!imgA || !imgB){
-    fill(255, 0, 0);
+  if (!imgA || !imgB || imgA.width === 0 || imgB.width === 0) {
+    fill(255);
     textSize(16);
-    text("Missing images: 05.jpg and 03.jpg", 20, 30);
+    text("Loading images…", 20, 30);
     return;
   }
 
-  cols = Math.max(2, cols);
-  rows = Math.max(2, rows);
+  cols = max(2, cols);
+  rows = max(2, rows);
 
-  // --- row heights ---
-  let rh = new Array(rows);
+  tt += speed;
+
+  // --- row heights (accordion) ---
+  const rh = new Array(rows);
   let sumH = 0;
-  for(let r=0; r<rows; r++){
-    let s = 1 + amp * Math.sin(tt + r*0.55);
-    rh[r] = Math.max(minCell, cell * s);
+  for (let r = 0; r < rows; r++) {
+    const s = 1 + amp * sin(tt + r * 0.55);
+    rh[r] = max(minCell, cell * s);
     sumH += rh[r];
   }
-  let ky = height / sumH;
-  for(let r=0; r<rows; r++) rh[r] *= ky;
+  const ky = height / sumH;
+  for (let r = 0; r < rows; r++) rh[r] *= ky;
 
-  // --- col widths ---
-  let cw = new Array(cols);
+  // --- col widths (accordion) ---
+  const cw = new Array(cols);
   let sumW = 0;
-  for(let c=0; c<cols; c++){
-    let s = 1 + amp * Math.sin(tt*0.95 + c*0.35);
-    cw[c] = Math.max(minCell, cell * s);
+  for (let c = 0; c < cols; c++) {
+    const s = 1 + amp * sin(tt * 0.95 + c * 0.35);
+    cw[c] = max(minCell, cell * s);
     sumW += cw[c];
   }
-  let kx = width / sumW;
-  for(let c=0; c<cols; c++) cw[c] *= kx;
+  const kx = width / sumW;
+  for (let c = 0; c < cols; c++) cw[c] *= kx;
 
   // --- draw grid ---
   let y = 0;
-  for(let r=0; r<rows; r++){
+  for (let r = 0; r < rows; r++) {
     let x = 0;
-    for(let c=0; c<cols; c++){
-      let w = cw[c], h = rh[r];
-      let img = ((r+c)%2===0) ? imgA : imgB;
+    for (let c = 0; c < cols; c++) {
+      const w = cw[c];
+      const h = rh[r];
+
+      const img = (r + c) % 2 === 0 ? imgA : imgB;
       drawCropLinked(img, x, y, w, h, r, c);
+
       x += w;
     }
     y += rh[r];
   }
 }
 
-// deterministic crop linked to same motion — and always fills the entire cell
-function drawCropLinked(img, x, y, w, h, r, c){
-  const tiny = Math.min(w, h);
-  if(tiny <= minCell + 0.5) return;
+function windowResized() {
+  fitToScreen();
+}
 
+// Scale the 650x910 canvas to fit viewport + margins without changing ratio.
+function fitToScreen() {
+  const m = windowWidth <= 700 ? 16 : 50; // match your CSS idea
+  const s = Math.min(
+    (windowWidth - m * 2) / POSTER_W,
+    (windowHeight - m * 2) / POSTER_H
+  );
+  const scale = Math.min(1, Math.max(0.05, s));
+  cnv.elt.style.transformOrigin = "center center";
+  cnv.elt.style.transform = `scale(${scale})`;
+}
+
+// --- deterministic crop linked to the same motion ---
+function drawCropLinked(img, x, y, w, h, r, c) {
+  if (!img) return;
+
+  const tiny = min(w, h);
+  if (tiny <= minCell + 0.5) return;
+
+  // Fade out image when the cell gets very small (Munken-ish)
   let a = 255;
-  if(tiny < fadeStart) a = map(tiny, minCell, fadeStart, 0, 255);
+  if (tiny < fadeStart) a = map(tiny, minCell, fadeStart, 0, 255);
+  tint(255, a);
 
-  // This is your "dark overlay vibe" but without leaving bright seams:
-  // draw image normally, then overlay a full-size translucent rect.
-  // (No tint seams, and it always covers the full cell.)
-  // --- compute crop window ---
-  const swf = constrain(map(w, 0, width, 40, img.width*0.55), 20, img.width);
-  const shf = constrain(map(h, 0, height, 40, img.height*0.55), 20, img.height);
+  // Crop window size depends on cell size
+  const swf = constrain(map(w, 0, width, 40, img.width * 0.55), 20, img.width);
+  const shf = constrain(map(h, 0, height, 40, img.height * 0.55), 20, img.height);
 
-  const ax = frac(Math.sin((c+1)*12.9898 + (r+1)*78.233) * 43758.5453);
-  const ay = frac(Math.sin((c+1)*93.9898 + (r+1)*67.345) * 24634.6345);
+  // Deterministic anchors per cell (no random jumping)
+  const ax = frac(sin((c + 1) * 12.9898 + (r + 1) * 78.233) * 43758.5453);
+  const ay = frac(sin((c + 1) * 93.9898 + (r + 1) * 67.345) * 24634.6345);
 
-  const phase = tt + r*0.55 + c*0.35;
-  const mx = cropMove * Math.sin(phase) * (1.0 - constrain(w / (cell*2.0), 0, 1));
-  const my = cropMove * Math.cos(phase) * (1.0 - constrain(h / (cell*2.0), 0, 1));
+  // Motion-linked shift (same sine phases as grid)
+  const phase = tt + r * 0.55 + c * 0.35;
+  const mx = cropMove * sin(phase) * (1.0 - constrain(w / (cell * 2.0), 0, 1));
+  const my = cropMove * cos(phase) * (1.0 - constrain(h / (cell * 2.0), 0, 1));
 
-  const baseX = ax * (img.width  - swf);
+  const baseX = ax * (img.width - swf);
   const baseY = ay * (img.height - shf);
 
-  const sxf = wrap(baseX + mx, img.width  - swf);
+  const sxf = wrap(baseX + mx, img.width - swf);
   const syf = wrap(baseY + my, img.height - shf);
 
-  const sx = Math.floor(sxf), sy = Math.floor(syf);
-  const sw = Math.max(1, Math.floor(swf)), sh = Math.max(1, Math.floor(shf));
+  const sx = int(sxf);
+  const sy = int(syf);
+  const sw = max(1, int(swf));
+  const sh = max(1, int(shf));
 
-  // draw cropped image into cell
-  push();
-  // fade only when tiny; alpha applied via tint is safe here because we DON'T stack overlays with it
-  tint(255, a);
-  image(img, x, y, w, h, sx, sy, sx+sw, sy+sh);
+  image(img, x, y, w, h, sx, sy, sx + sw, sy + sh);
   noTint();
-
-  // overlay to darken — ALWAYS full cell (no seams)
-  fill(0, 70);
-  rect(x, y, w, h);
-  pop();
 }
 
-function wrap(v, maxv){
-  if(maxv <= 1) return 0;
+function wrap(v, maxv) {
+  if (maxv <= 1) return 0;
   v = v % maxv;
-  if(v < 0) v += maxv;
+  if (v < 0) v += maxv;
   return v;
 }
-
-function frac(v){
-  return v - Math.floor(v);
+function frac(v) {
+  return v - floor(v);
 }
 
-// ---------- BUTTON CONTROLS ----------
-
-function colsDown(){
+// -------- UI functions for your HTML buttons --------
+function colsDown() {
   cols = max(2, cols - 1);
 }
-
-function colsUp(){
+function colsUp() {
   cols = min(12, cols + 1);
 }
-
-function rowsDown(){
+function rowsDown() {
   rows = max(2, rows - 1);
 }
-
-function rowsUp(){
+function rowsUp() {
   rows = min(12, rows + 1);
 }
+function savePoster() {
+  saveIndex++;
+  saveCanvas(`poster_${nf(saveIndex, 5)}`, "png");
+}
 
-function savePoster(){
-  saveCanvas('poster', 'png');
+// -------- keyboard shortcuts --------
+function keyPressed() {
+  if (key === "c") colsDown();
+  if (key === "C") colsUp();
+
+  if (key === "r") rowsDown();
+  if (key === "R") rowsUp();
+
+  if (key === "s" || key === "S") savePoster();
 }
