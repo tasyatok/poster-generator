@@ -1,5 +1,8 @@
-// Munken-ish accordion grid + image fragments
-// Put 05.jpg and 03.jpg into /assets (or change paths below)
+// Munken-ish accordion grid + image fragments (responsive fit, no scroll)
+// Put 05.jpg and 03.jpg into /assets (or change paths in preload)
+
+const BASE_W = 650;
+const BASE_H = 910;
 
 let cols = 3, rows = 5;
 let cell = 130, tt = 0, speed = 0.01, amp = 0.95;
@@ -10,18 +13,47 @@ let minCell = 6;
 let fadeStart = 22;
 let cropMove = 220;
 
+let cnv;
+
 function preload() {
-  // If your images are in /assets, keep this.
-  // If they're in the project root, change to "05.jpg" etc.
   imgA = loadImage("assets/05.jpg");
   imgB = loadImage("assets/03.jpg");
 }
 
 function setup() {
-  const cnv = createCanvas(650, 910);
+  // Create at base size, then we scale it with CSS so it always fits.
+  cnv = createCanvas(BASE_W, BASE_H);
   cnv.parent("sketch-holder");
+
   pixelDensity(window.devicePixelRatio || 1);
   noStroke();
+
+  fitCanvasToScreen();
+}
+
+function windowResized() {
+  fitCanvasToScreen();
+}
+
+// Scale the existing canvas element with CSS to fit inside available area.
+// Keeps 650x910 aspect ratio, avoids any resize jitter and keeps drawing math identical.
+function fitCanvasToScreen() {
+  const holder = document.getElementById("sketch-holder");
+  if (!holder) return;
+
+  const rect = holder.getBoundingClientRect();
+  const availW = rect.width;
+  const availH = rect.height;
+
+  const scale = Math.min(availW / BASE_W, availH / BASE_H);
+
+  const cssW = Math.floor(BASE_W * scale);
+  const cssH = Math.floor(BASE_H * scale);
+
+  // apply CSS size to the canvas (drawing stays BASE_W x BASE_H)
+  const el = cnv.elt;
+  el.style.width = cssW + "px";
+  el.style.height = cssH + "px";
 }
 
 function draw() {
