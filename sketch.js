@@ -1,5 +1,7 @@
-// sketch.js — Munken-ish accordion grid (2-image chain) + HQ save + mobile centering fix
-// Desktop/web behavior stays the same. iPhone Safari gets a centering fix only.
+// sketch.js — Munken-ish accordion grid (2-image chain)
+// Desktop/web: unchanged behavior (preloads all, same speed/quality).
+// Mobile Safari: faster load (lazy-load only needed images) + faster playback (downscaled textures).
+// Mobile centering stays fixed.
 
 const POSTER_W = 650;
 const POSTER_H = 910;
@@ -14,8 +16,17 @@ let tt = 0;
 let speed = 0.01;
 let amp = 0.95;
 
-let imgs = [];
-let imgFiles = [
+const minCell = 6;
+const fadeStart = 22;
+const cropMove = 220;
+
+let saveIndex = 0;
+
+const MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+// Your allowed image pool (same as before)
+const imgFiles = [
   "02.jpg",
   "03.jpg",
   "04.jpg",
@@ -35,24 +46,27 @@ const swapChain = [
   ["04.jpg", "02.jpg"],
   ["02.jpg", "08.jpg"]
 ];
+
 let chainIdx = 0;
+let activeAName = "05.jpg";
+let activeBName = "03.jpg";
 
-let activeA = 0;
-let activeB = 0;
+// --- Image cache (name -> p5.Image or null while loading) ---
+const imgCache = new Map();
 
-const minCell = 6;
-const fadeStart = 22;
-const cropMove = 220;
-
-let saveIndex = 0;
-
-// MOBILE ONLY smoothing (desktop untouched)
-const MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+// Mobile-only time smoothing (prevents “jump”)
 let dtSmooth = 1;
 
+// -------------------- LOADING STRATEGY --------------------
+// Desktop: preload ALL images (unchanged web behavior).
+// Mobile: do NOT preload all (faster page load). Only start pair gets loaded immediately.
+
 function preload() {
-  for (let i = 0; i < imgFiles.length; i++) {
-    imgs[i] = loadImage(imgFiles[i]);
+  if (!MOBILE) {
+    // Desktop/web: preload everything (same as your previous behavior)
+    for (const f of imgFiles) {
+      imgCache.set(f, loadImage(f));
+    }
   }
 }
 
@@ -64,10 +78,17 @@ function setup() {
   noStroke();
   imageMode(CORNER);
 
+  // Mobile: stable lower FPS helps smoothness
   if (MOBILE) frameRate(24);
 
+  // Start exactly 05–03
   applyChainPair(0);
 
+  // Mobile: immediately request only the two needed images
+  ensureImageLoaded(activeAName);
+  ensureImageLoaded(activeBName);
+
+  // Keep your mobile centering fix
   fitToScreen();
   setTimeout(fitToScreen, 80);
 
@@ -80,18 +101,12 @@ function setup() {
 function draw() {
   background(0);
 
-  if (!imgs.length || imgs.some(im => !im || im.width === 0)) {
-    fill(255);
-    textSize(16);
-    text("Loading images…", 20, 30);
-    return;
-  }
-
   cols = max(2, cols);
   rows = max(2, rows);
 
+  // Timing: desktop unchanged, mobile smoothed
   if (!MOBILE) {
-    tt += speed; // desktop unchanged
+    tt += speed;
   } else {
     let dt = deltaTime / 16.666;
     dt = constrain(dt, 0.75, 1.35);
@@ -99,7 +114,19 @@ function draw() {
     tt += speed * dtSmooth;
   }
 
-  renderTo(this, width, height, tt);
+  // Get the two active images (might still be loading on mobile)
+  const imgA = getImage(activeAName);
+  const imgB = getImage(activeBName);
+
+  if (!imgA || !imgB || imgA.width === 0 || imgB.width === 0) {
+    // Mobile will show this briefly only for the current pair, not all 8 images
+    fill(255);
+    textSize(16);
+    text("Loading images…", 20, 30);
+    return;
+  }
+
+  renderTo(this, width, height, tt, imgA, imgB);
 }
 
 function windowResized() {
@@ -107,7 +134,7 @@ function windowResized() {
 }
 
 // Scale & center the 650×910 canvas to viewport without changing ratio.
-// iPhone Safari fix: force absolute centering with translate(-50%, -50%).
+// iPhone Safari: absolute centering with translate(-50%, -50%).
 function fitToScreen() {
   const m = windowWidth <= 700 ? 16 : 50;
 
@@ -127,16 +154,12 @@ function fitToScreen() {
   const el = cnv.elt;
   el.style.transformOrigin = "center center";
 
-  const isiOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
-
   if (isiOS) {
-    // iOS Safari transform centering bug workaround
     el.style.position = "absolute";
     el.style.left = "50%";
     el.style.top = "50%";
     el.style.transform = `translate(-50%, -50%) scale(${scale})`;
   } else {
-    // Desktop stays as before (centered by CSS stage container)
     el.style.position = "relative";
     el.style.left = "auto";
     el.style.top = "auto";
@@ -145,7 +168,7 @@ function fitToScreen() {
 }
 
 // ---------- Core render (used for live draw AND HQ save) ----------
-function renderTo(g, W, H, tVal) {
+function renderTo(g, W, H, tVal, imgA, imgB) {
   // row heights
   const rh = new Array(rows);
   let sumH = 0;
@@ -168,14 +191,14 @@ function renderTo(g, W, H, tVal) {
   const kx = W / sumW;
   for (let c = 0; c < cols; c++) cw[c] *= kx;
 
-  // draw grid (2 images only)
+  // draw grid using ONLY the two images
   let y = 0;
   for (let r = 0; r < rows; r++) {
     let x = 0;
     for (let c = 0; c < cols; c++) {
       const w = cw[c];
       const h = rh[r];
-      const img = ((r + c) % 2 === 0) ? imgs[activeA] : imgs[activeB];
+      const img = ((r + c) % 2 === 0) ? imgA : imgB;
       drawCropLinkedTo(g, img, x, y, w, h, r, c, W, H, tVal);
       x += w;
     }
@@ -185,8 +208,6 @@ function renderTo(g, W, H, tVal) {
 
 // Crop without teleporting jump: clamp instead of wrap
 function drawCropLinkedTo(g, img, x, y, w, h, r, c, W, H, tVal) {
-  if (!img) return;
-
   const tiny = min(w, h);
   if (tiny <= minCell + 0.5) return;
 
@@ -227,29 +248,69 @@ function drawCropLinkedTo(g, img, x, y, w, h, r, c, W, H, tVal) {
 
 function frac(v) { return v - floor(v); }
 
-function indexOfFile(name) {
-  const i = imgFiles.indexOf(name);
-  return (i >= 0) ? i : 0;
+// -------------------- IMAGE LAZY-LOAD + MOBILE DOWNSCALE --------------------
+
+// Returns image if loaded, otherwise null
+function getImage(name) {
+  const im = imgCache.get(name);
+  return im && im.width > 0 ? im : null;
 }
+
+// Ensure image begins loading; on mobile we also downscale once it loads
+function ensureImageLoaded(name) {
+  if (imgCache.has(name)) return;
+
+  imgCache.set(name, null); // mark as loading
+
+  loadImage(
+    name,
+    (im) => {
+      // Mobile perf: downscale the texture once so per-frame cropping is cheaper.
+      // Desktop untouched because desktop preloads via preload().
+      if (MOBILE) {
+        const maxW = 1200; // good compromise for speed vs detail on iPhone
+        if (im.width > maxW) {
+          const copy = im.get();
+          copy.resize(maxW, 0);
+          imgCache.set(name, copy);
+          return;
+        }
+      }
+      imgCache.set(name, im);
+    },
+    () => {
+      // Failed load -> keep null (you'll see "Loading images…")
+      imgCache.set(name, null);
+    }
+  );
+}
+
+// -------------------- CHAIN LOGIC --------------------
 
 function applyChainPair(idx) {
   chainIdx = (idx + swapChain.length) % swapChain.length;
   const [aName, bName] = swapChain[chainIdx];
-  activeA = indexOfFile(aName);
-  activeB = indexOfFile(bName);
+  activeAName = aName;
+  activeBName = bName;
 }
 
-// --- UI hooks (HTML buttons) ---
+function swapNextPair() {
+  applyChainPair(chainIdx + 1);
+  // Mobile: only load the two we need now (fast initial page load)
+  if (MOBILE) {
+    ensureImageLoaded(activeAName);
+    ensureImageLoaded(activeBName);
+  }
+}
+
+// -------------------- UI hooks (HTML buttons) --------------------
+
 function colsDown() { cols = max(2, cols - 1); }
 function colsUp()   { cols = min(12, cols + 1); }
 function rowsDown() { rows = max(2, rows - 1); }
 function rowsUp()   { rows = min(12, rows + 1); }
 
-function swapNextPair() {
-  applyChainPair(chainIdx + 1);
-}
-
-// HQ PNG export (desktop 2×, mobile 1.5× to avoid memory issues)
+// PNG export: keep exactly as you said (web version perfect)
 function savePoster() {
   saveIndex++;
 
@@ -262,11 +323,16 @@ function savePoster() {
   g.noStroke();
   g.background(0);
 
-  renderTo(g, W, H, tt);
+  const imgA = getImage(activeAName) || imgCache.get(activeAName);
+  const imgB = getImage(activeBName) || imgCache.get(activeBName);
+  if (!imgA || !imgB || imgA.width === 0 || imgB.width === 0) return;
+
+  renderTo(g, W, H, tt, imgA, imgB);
 
   saveCanvas(g, `poster_${nf(saveIndex, 5)}`, "png");
 }
 
+// Keyboard
 function keyPressed() {
   if (key === "c") colsDown();
   if (key === "C") colsUp();
