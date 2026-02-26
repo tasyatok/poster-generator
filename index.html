@@ -9,8 +9,19 @@
 </head>
 <body>
   <main id="stage">
-    <!-- p5 will insert the canvas here -->
+    <!-- p5 canvas will be injected here -->
   </main>
+
+  <!-- UI buttons -->
+  <div id="ui">
+    <button onclick="colsDown()">− Col</button>
+    <button onclick="colsUp()">+ Col</button>
+
+    <button onclick="rowsDown()">− Row</button>
+    <button onclick="rowsUp()">+ Row</button>
+
+    <button onclick="savePoster()">Save PNG</button>
+  </div>
 
   <script src="sketch.js"></script>
 </body>
