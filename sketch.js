@@ -1,160 +1,141 @@
-const BASE_W = 650;
-const BASE_H = 910;
+// --- poster base size (DO NOT CHANGE if you want the 650x910 ratio) ---
+const POSTER_W = 650;
+const POSTER_H = 910;
 
-let MARGIN = 50;
-let scaleK = 1;
-
+// grid + motion (same idea as your Munken-ish crop grid)
 let cols = 3, rows = 5;
-let cell = 130, t = 0, speed = 0.03, amp = 0.95;
+let t = 0;
+let speed = 0.01;
+let amp = 0.95;
 
-let focusCol = [];
 let imgA, imgB;
 
-let minCell = 2;
-let fadeStart = 18;
-let cropMove = 220;
-
-function preload() {
-  // Put 05.jpg and 03.jpg next to index.html (same folder)
+function preload(){
+  // IMPORTANT: images must be in SAME folder as index.html (or update path)
   imgA = loadImage("05.jpg");
   imgB = loadImage("03.jpg");
 }
 
-function setup() {
-  createCanvas(BASE_W, BASE_H);
+function setup(){
+  const cnv = createCanvas(POSTER_W, POSTER_H);
+  cnv.parent("frame");
   pixelDensity(window.devicePixelRatio || 1);
   noStroke();
 
-  for (let r = 0; r < rows; r++) focusCol[r] = r % cols;
-
-  applyCanvasScale();
+  fitFrameToViewport(); // scale wrapper to fit screen
 }
 
-function windowResized() {
-  applyCanvasScale();
+function windowResized(){
+  fitFrameToViewport();
 }
 
-function applyCanvasScale() {
-  const vw = window.innerWidth;
-  const vh = window.innerHeight;
+// Scale #frame (650x910) to fit available viewport with margins, no squashing
+function fitFrameToViewport(){
+  const frame = document.getElementById("frame");
+  const stage = document.getElementById("stage");
 
-  // optional: slightly smaller margin on tiny screens
-  const m = (vw < 700 || vh < 700) ? 20 : MARGIN;
+  const rect = stage.getBoundingClientRect();
+  const availW = rect.width;
+  const availH = rect.height;
 
-  const availW = Math.max(1, vw - 2 * m);
-  const availH = Math.max(1, vh - 2 * m);
-
-  scaleK = Math.min(availW / BASE_W, availH / BASE_H, 1);
-
-  const left = Math.max(m, (vw - BASE_W * scaleK) / 2);
-  const top  = Math.max(m, (vh - BASE_H * scaleK) / 2);
-
-  const c = document.querySelector("canvas");
-  if (!c) return;
-
-  c.style.transform = `scale(${scaleK})`;
-  c.style.left = `${left}px`;
-  c.style.top = `${top}px`;
+  const s = Math.min(availW / POSTER_W, availH / POSTER_H);
+  frame.style.transform = `scale(${s})`;
 }
 
-function draw() {
+function draw(){
   background(0);
-  t += speed;
 
-  if (!imgA || !imgB || imgA.width === 0 || imgB.width === 0) {
-    fill(255);
-    textSize(16);
-    text("Missing images.\nPut 05.jpg and 03.jpg next to index.html.", 20, 30);
+  // if images failed to load, show a clear message instead of silent black
+  if(!imgA || !imgB || imgA.width === 0 || imgB.width === 0){
+    fill(255, 40, 40);
+    textSize(18);
+    text("Images not loaded.\nPut 05.jpg and 03.jpg next to index.html\n(or fix the paths in preload).", 24, 40);
     return;
   }
 
-  // --- Y accordion (row heights) ---
-  let rh = new Array(rows);
+  t += speed;
+
+  // row heights
+  const rh = new Array(rows);
   let sumH = 0;
-  for (let r = 0; r < rows; r++) {
-    const s = 1 + amp * Math.sin(t + r * 0.55);
-    rh[r] = Math.max(minCell, cell * s);
+  for(let r=0; r<rows; r++){
+    const s = 1 + amp * Math.sin(t + r*0.55);
+    rh[r] = Math.max(6, 130 * s);
     sumH += rh[r];
   }
   const ky = height / sumH;
-  for (let r = 0; r < rows; r++) rh[r] *= ky;
+  for(let r=0; r<rows; r++) rh[r] *= ky;
 
-  // draw rows
+  // col widths
+  const cw = new Array(cols);
+  let sumW = 0;
+  for(let c=0; c<cols; c++){
+    const s = 1 + amp * Math.sin(t*0.95 + c*0.35);
+    cw[c] = Math.max(6, 130 * s);
+    sumW += cw[c];
+  }
+  const kx = width / sumW;
+  for(let c=0; c<cols; c++) cw[c] *= kx;
+
+  // draw cells
   let y = 0;
-  for (let r = 0; r < rows; r++) {
-    drawRow(r, y, rh[r]);
+  for(let r=0; r<rows; r++){
+    let x = 0;
+    for(let c=0; c<cols; c++){
+      const w = cw[c], h = rh[r];
+      const img = ((r+c)%2===0) ? imgA : imgB;
+
+      drawCoverCrop(img, x, y, w, h, r, c);
+
+      // subtle dark overlay (covers the WHOLE cell)
+      fill(0, 70);
+      rect(x, y, w, h);
+
+      x += w;
+    }
     y += rh[r];
   }
 }
 
-function drawRow(r, y, h) {
-  const fc = focusCol[r];
+// --- key fix: ALWAYS fill the whole cell (no black gaps) ---
+function drawCoverCrop(img, x, y, w, h, r, c){
+  // deterministic anchor per cell (stable)
+  const ax = frac(Math.sin((c+1)*12.9898 + (r+1)*78.233) * 43758.5453);
+  const ay = frac(Math.sin((c+1)*93.9898 + (r+1)*67.345) * 24634.6345);
 
-  const s = 1 + amp * Math.sin(t + r * 0.55);
-  let wFocus = Math.max(minCell, cell * s);
-  let wOther = Math.max(minCell, (width - wFocus) / (cols - 1));
+  // "cover" scale: source crop aspect matches cell aspect
+  const cellAR = w / h;
+  const imgAR  = img.width / img.height;
 
-  // normalize widths
-  const total = wFocus + (cols - 1) * wOther;
-  const k = width / total;
-  wFocus *= k;
-  wOther *= k;
-
-  let x = 0;
-  for (let c = 0; c < cols; c++) {
-    const w = (c === fc) ? wFocus : wOther;
-    const img = ((r + c) % 2 === 0) ? imgA : imgB;
-    drawCropLinked(img, x, y, w, h, r, c);
-    x += w;
+  let sw, sh;
+  if(imgAR > cellAR){
+    // image is wider -> crop width
+    sh = img.height;
+    sw = sh * cellAR;
+  }else{
+    // image is taller -> crop height
+    sw = img.width;
+    sh = sw / cellAR;
   }
+
+  // motion-linked slide (subtle)
+  const phase = t + r*0.55 + c*0.35;
+  const mx = 0.12 * sw * Math.sin(phase);
+  const my = 0.12 * sh * Math.cos(phase);
+
+  // anchor base inside allowed crop area
+  const maxX = img.width  - sw;
+  const maxY = img.height - sh;
+
+  let sx = ax * maxX + mx;
+  let sy = ay * maxY + my;
+
+  // clamp so we never go out-of-bounds (no black)
+  sx = constrain(sx, 0, maxX);
+  sy = constrain(sy, 0, maxY);
+
+  image(img, x, y, w, h, sx, sy, sx+sw, sy+sh);
 }
 
-function drawCropLinked(img, x, y, w, h, r, c) {
-  const tiny = Math.min(w, h);
-  if (tiny <= minCell + 0.5) return;
-
-  let a = 255;
-  if (tiny < fadeStart) a = map(tiny, minCell, fadeStart, 0, 255);
-  tint(255, a);
-
-  const swf = constrain(map(w, 0, width, 40, img.width * 0.55), 20, img.width);
-  const shf = constrain(map(h, 0, height, 40, img.height * 0.55), 20, img.height);
-
-  const ax = frac(Math.sin((c + 1) * 12.9898 + (r + 1) * 78.233) * 43758.5453);
-  const ay = frac(Math.sin((c + 1) * 93.9898 + (r + 1) * 67.345) * 24634.6345);
-
-  const phase = t + r * 0.55 + c * 0.35;
-  const mx = cropMove * Math.sin(phase) * (1.0 - constrain(w / (cell * 2.0), 0, 1));
-  const my = cropMove * Math.cos(phase) * (1.0 - constrain(h / (cell * 2.0), 0, 1));
-
-  const baseX = ax * (img.width - swf);
-  const baseY = ay * (img.height - shf);
-
-  const sxf = wrap(baseX + mx, img.width - swf);
-  const syf = wrap(baseY + my, img.height - shf);
-
-  const sx = Math.floor(sxf), sy = Math.floor(syf);
-  const sw = Math.max(1, Math.floor(swf)), sh = Math.max(1, Math.floor(shf));
-
-  image(img, x, y, w, h, sx, sy, sx + sw, sy + sh);
-  noTint();
-}
-
-function wrap(v, maxv) {
-  if (maxv <= 1) return 0;
-  v = v % maxv;
-  if (v < 0) v += maxv;
-  return v;
-}
-
-function frac(v) {
-  return v - Math.floor(v);
-}
-
-function keyPressed() {
-  if (key === "w") speed += 0.005;
-  if (key === "s") speed = Math.max(0, speed - 0.005);
-  if (key === "d") amp = Math.min(0.99, amp + 0.05);
-  if (key === "a") amp = Math.max(0.05, amp - 0.05);
-  if (key === "r") for (let i = 0; i < rows; i++) focusCol[i] = Math.floor(Math.random() * cols);
-}
+function frac(v){ return v - Math.floor(v); }
+function constrain(v, a, b){ return Math.max(a, Math.min(b, v)); }
